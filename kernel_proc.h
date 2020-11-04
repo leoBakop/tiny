@@ -28,7 +28,6 @@ typedef enum pid_state_e {
   FREE,   /**< @brief The PID is free and available */
   ALIVE,  /**< @brief The PID is given to a process */
   ZOMBIE  /**< @brief The PID is held by a zombie */
-  
 } pid_state;
 
 /**
@@ -61,8 +60,34 @@ typedef struct process_control_block {
 
   FCB* FIDT[MAX_FILEID];  /**< @brief The fileid table of the process */
 
-} PCB;
+  rlnode ptcb_list;
+  int thread_count;
 
+} PCB;
+ 
+
+ //for project
+
+typedef struct process_thread_control_block{
+
+  TCB* tcb;
+  Task task;
+
+  void* args;
+  int argl;
+  int exitval;
+
+  int exited [0, 1];
+  int detached [0, 1];
+
+  CondVar exit_cv;
+  int refcount;
+
+  rlnode ptcb_list_node;
+
+} PTCB;
+
+//end of our section 
 
 /**
   @brief Initialize the process table.
