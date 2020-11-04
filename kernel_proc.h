@@ -28,7 +28,7 @@ typedef enum pid_state_e {
   FREE,   /**< @brief The PID is free and available */
   ALIVE,  /**< @brief The PID is given to a process */
   ZOMBIE  /**< @brief The PID is held by a zombie */
-  Ale
+  
 } pid_state;
 
 /**
