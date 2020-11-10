@@ -107,7 +107,7 @@ static void thread_start()
   Initialize and return a new TCB
 */
 
-TCB* spawn_thread(PCB* pcb, void (*func)())
+TCB* spawn_thread(PCB* pcb,PTCB* ptcb ,void (*func)())  //alexandra added the argument PTCB 
 {
 	/* The allocated thread size must be a multiple of page size */
 	TCB* tcb = (TCB*)allocate_thread(THREAD_SIZE);
