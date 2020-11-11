@@ -165,29 +165,6 @@ void start_main_thread()
   Exit(exitval);
 }
 
-// new code by Alexandra. 
-/*
-In this new function , named new_start_main_thread() 
- we are going to slightly change start_main_thread() 
- in order to call this as an argument to the new spawn function, called in CreateThread
- as asked by the project
-*/
-
-void start_another_thread()
-{
-int exitval;
-
-Task call = CURTHREAD->ptcb->task;
-int argl = CURTHREAD->argl;
-void* args = CURTHREAD->args;
-
-exitval = call(argl,args);
-
-sys_ThreadExit(exitval);
-}
-
-//end of new code
-
 /*
 	System call to create a new process.
  */
@@ -240,12 +217,27 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     we do, because once we wakeup the new thread it may run! so we need to have finished
     the initialization of the PCB.
    */
-  if(call != NULL) {
-    newproc->main_thread = spawn_thread(newproc, start_another_thread);
-    wakeup(newproc->main_thread);
+ //new code segment by Alexandra :
+
+  PTCB*  ptcb = (PTCB*)xmalloc(sizeof(PTCB));
+
+  initialize_PTCB(ptcb,newproc);
+
+if( args == NUll){
+	ptcb->args = NULL;
+}
+else{
+	ptcb->args = malloc(argl);
+	memcpy(ptcb->args , args, argl); // to copy the content
+}
+
+
+if(call != NULL) {
+    ptcb->tcb =spawn_thread(ptcb,start_main_thread);
+    newproc->threadcount ++;
+    rlist_push_back(& newproc->ptcb_list ,ptcb);
+    wakeup(ptcb->tcb);
   }
-
-
 finish:
   return get_pid(newproc);
 }
