@@ -70,7 +70,7 @@ static inline void initialize_PTCB(PTCB* ptcb){
 	rlnode_init(& ptcb->ptcb_list_node, ptcb)
 
 	/*inform pcb for the new ptcb*/
-	rlist_push_front(pcb->ptcb_list, ptcb->ptcb_list_node);
+	rlist_push_front(& pcb->ptcb_list, ptcb->ptcb_list_node);
 	ptcb->thread_count++;
 
 
@@ -165,6 +165,28 @@ void start_main_thread()
   Exit(exitval);
 }
 
+// new code by Alexandra. 
+/*
+In this new function , named new_start_main_thread() 
+ we are going to slightly change start_main_thread() 
+ in order to call this as an argument to the new spawn function, called in CreateThread
+ as asked by the project
+*/
+
+void start_another_thread()
+{
+int exitval;
+
+Task call = CURTHREAD->ptcb->task;
+int argl = CURTHREAD->argl;
+void* args = CURTHREAD->args;
+
+exitval = call(argl,args);
+
+sys_ThreadExit(exitval);
+}
+
+//end of new code
 
 /*
 	System call to create a new process.
@@ -219,7 +241,7 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     the initialization of the PCB.
    */
   if(call != NULL) {
-    newproc->main_thread = spawn_thread(newproc, start_main_thread);
+    newproc->main_thread = spawn_thread(newproc, start_another_thread);
     wakeup(newproc->main_thread);
   }
 
