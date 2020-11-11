@@ -34,7 +34,7 @@ sys_ThreadExit(exitval);
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
  PCB* pcb = CURPROC ;
- CURPROC->thread_count ++;
+ pcb->thread_count ++;
  PTCB *ptcb = xmalloc(sizeof(PTCB));
 
 initialize_PTCB(ptcb,CURPROC); //check if curproc is correct
@@ -48,13 +48,13 @@ else
 	memcpy(ptcb->args , args, argl); 
 }
 
-rlist_push_back(& CURPROC->ptcb_list, ptcb); 
+rlist_push_back(& pcb->ptcb_list, ptcb); 
 //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
 //*newNode =rlnode_init(&ptcb->node , ptcb);
 
 if(task != NULL)
 {
-	TCB* tcb = spawn_thread(CURPROC, start_another_thread);
+	TCB* tcb = spawn_thread(ptcb, start_another_thread);
 	wakeup(tcb); //etoimase ena tcb gia ton scheduler
 }
 
