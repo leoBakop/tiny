@@ -107,13 +107,18 @@ static void thread_start()
   Initialize and return a new TCB
 */
 
-TCB* spawn_thread(PCB* pcb,PTCB* ptcb ,void (*func)())  //alexandra added the argument PTCB 
+TCB* spawn_thread(PTCB* ptcb ,void (*func)())  //alexandra changed the first argument to PTCB 
 {
 	/* The allocated thread size must be a multiple of page size */
 	TCB* tcb = (TCB*)allocate_thread(THREAD_SIZE);
 
 	/* Set the owner */
-	tcb->owner_pcb = pcb;
+	//new code!!!
+	
+	tcb->owner_ptcb = ptcb; //new code-connects tcb with ptcb
+	tcb->owner_pcb = CURPROC; //connects pcb with tcb
+	ptcb->tcb = tcb; //connects tcb with tcb
+	
 
 	/* Initialize the other attributes */
 	tcb->type = NORMAL_THREAD;
