@@ -34,7 +34,7 @@ sys_ThreadExit(exitval);
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
  PCB* pcb = CURPROC ;
- pcb->thread_count ++;
+ 
  PTCB *ptcb = xmalloc(sizeof(PTCB));
 
 initialize_PTCB(ptcb,pcb); //check if curproc is correct
@@ -55,6 +55,7 @@ rlist_push_back(& pcb->ptcb_list, ptcb);
 if(task != NULL)
 {
 	TCB* tcb = spawn_thread(ptcb, start_another_thread);
+	pcb->thread_count ++;
 	wakeup(tcb); //etoimase ena tcb gia ton scheduler
 }
 
