@@ -37,7 +37,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
  pcb->thread_count ++;
  PTCB *ptcb = xmalloc(sizeof(PTCB));
 
-initialize_PTCB(ptcb,CURPROC); //check if curproc is correct
+initialize_PTCB(ptcb,pcb); //check if curproc is correct
 
 if( args == NULL){
 	ptcb-> args = NULL;
