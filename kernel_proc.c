@@ -29,7 +29,7 @@ Pid_t get_pid(PCB* pcb)
   return pcb==NULL ? NOPROC : pcb-PT;
 }
 
-* Initialize a PCB */
+/* Initialize a PCB */
 static inline void initialize_PCB(PCB* pcb)
 {
   pcb->pstate = FREE;
@@ -58,7 +58,7 @@ static inline void initialize_PCB(PCB* pcb)
 *initialize a PTCB
 **/
 
-static inline void initialize_PTCB(PTCB* ptcb, PCB* pcb){
+ void initialize_PTCB(PTCB* ptcb, PCB* pcb){
     
     /* initialize in ptcb*/
 	
@@ -70,12 +70,12 @@ static inline void initialize_PTCB(PTCB* ptcb, PCB* pcb){
 	ptcb->exited=0;
 	ptcb->detached=0;
 	ptcb->exit_cv = COND_INIT;
-	pcb->refcount=0;
-	rlnode_init(& ptcb->ptcb_list_node, NULL)
+	ptcb->refcount=0;
+	rlnode_init(& ptcb->ptcb_list_node, NULL);
 
 	/*inform pcb for the new ptcb*/
-	rlist_push_back(& pcb->ptcb_list, ptcb->ptcb_list_node);
-	ptcb->thread_count++;
+	rlist_push_back(& pcb->ptcb_list,& ptcb->ptcb_list_node);
+	pcb->thread_count++;
 
 
 }
@@ -84,15 +84,15 @@ static inline void initialize_PTCB(PTCB* ptcb, PCB* pcb){
 
 
 void refcountIncr(PTCB* ptcb){
-	ptcb->refcount++
+	ptcb->refcount++;
 }
 
 void refcountDec(PTCB* ptcb){
 	ptcb->refcount--;
 	if(ptcb->refcount==0){
 		PCB* curproc=CURPROC;
-		rlist_remove(& curproc->ptcb_list, ptcb);
-		free(ptcb)
+		rlist_remove(ptcb);
+		free(ptcb);
 	}
 }
 
@@ -235,7 +235,7 @@ Pid_t sys_Exec(Task call, int argl, void* args)
 
   initialize_PTCB(ptcb,newproc);
 
-if( args == NUll){
+if( args == NULL){
 	ptcb->args = NULL;
 }
 else{
@@ -246,7 +246,7 @@ else{
 
 if(call != NULL) {
     ptcb->tcb =spawn_thread(ptcb,start_main_thread);
-    newproc->threadcount ++;
+    newproc->thread_count ++;
     rlist_push_back(& newproc->ptcb_list ,ptcb);
     wakeup(ptcb->tcb);
   }
@@ -364,7 +364,7 @@ void sys_Exit(int exitval)
   PCB *curproc = CURPROC;  /* cache for efficiency */
   curproc->exitval = exitval;
 
-  sys_ThreadExit(int exitval);
+  sys_ThreadExit(exitval);
 
 // /* Do all the other cleanup we want here, close files etc. */
 //  if(curproc->args) {
