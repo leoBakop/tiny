@@ -91,7 +91,7 @@ if(currptcb->tcb == ptcb->tcb ){
   return -1;
 }
 
-if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
+if(rlist_find(& curproc->ptcb_list, ptcb, -1)==-1){
   return -1;
 }
 
@@ -195,7 +195,7 @@ void sys_ThreadExit(int exitval)
 
       PTCB* ptcb=CURTHREAD->owner_ptcb;
       ptcb->exited=1;
-      ptcb->exitval=exitval  //save the thread exitval to the ptcb exitval
+      ptcb->exitval=exitval;  //save the thread exitval to the ptcb exitval
       ptcb->tcb->state= EXITED;
       if(ptcb->refcount > 0){  //if there are some THREAD who haved join ptcb
           kernel_broadcast(& ptcb->exit_cv); //inform the other threads 
@@ -203,7 +203,7 @@ void sys_ThreadExit(int exitval)
       }else{
           //if refcount==0 then destroy the ptcb and remove it from the pcb's list
           rlist_remove(& curproc->ptcb_list, ptcb);
-          free(ptcb)  
+          free(ptcb);  
 
           }
    }
