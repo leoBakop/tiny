@@ -180,13 +180,7 @@ TCB* cur_thread();
 */
 #define CURPROC (cur_thread()->owner_pcb)
 
-/**
-  @brief The current thread
-  
-  This is a pointer to the PCB of the owner process of the current thread, 
-  i.e., the thread currently executing on this core.
-*/
-#define CURTHREAD (cur_thread()->owner_ptcb)
+#define CURTHREAD (CURCORE.current_thread)
 
 /**
   @brief A timeout constant, denoting no timeout for sleep.
