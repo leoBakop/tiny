@@ -90,9 +90,9 @@ if(currptcb equals ptcb ){
 if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
   return -1;
 }
-
-kernel_wait(ptcb->exit_cv, SCHED_USER);
+	
 refcountIncr(ptcb);
+kernel_wait(ptcb->exit_cv, SCHED_USER);
 exitval= & ptcb->exitval;
 return 0;
 }
