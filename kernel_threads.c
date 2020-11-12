@@ -66,18 +66,11 @@ if(task != NULL)
 return (Tid_t) ptcb;  
 }
 
+
 //new code by bill
 Tid_t sys_ThreadSelf()
 {
-  return (PTCB* ) CURTHREAD->ptcb_owner;
-}
-/**
-  @brief Return the Tid of the current thread.
- */
-//new code by bill
-Tid_t sys_ThreadSelf()
-{
-	return (Tid_t) CURTHREAD->ptcb_owner;
+	return (Tid_t) cur_thread();
 }
 
 /**
