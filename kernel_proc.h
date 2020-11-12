@@ -123,7 +123,7 @@ Pid_t get_pid(PCB* pcb);
 
 /** @} */
 
-static inline void initialize_PTCB(PTCB* ptcb, PCB* pcb);  //was added by lui
+void initialize_PTCB(PTCB* ptcb, PCB* pcb);  //was added by lui
 void refcountIncr(PTCB* ptcb);                   //was added by lui
 void refcountDec(PTCB* ptcb);                    //was added by lui
 
