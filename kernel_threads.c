@@ -14,7 +14,7 @@ void start_another_thread()
 {
 int exitval;
 
-Task call = CURTHREAD->ptcb->task;
+Task call = CURTHREAD->owner_ptcb->task;
 //Task call = CURTHREAD->ptcb_owner->task;
 int argl = CURTHREAD->argl;
 void* args = CURTHREAD->args;
