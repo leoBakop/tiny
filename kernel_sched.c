@@ -11,6 +11,43 @@
 #include <valgrind/valgrind.h>
 #endif
 
+
+/********************************************
+	
+	Core table and CCB-related declarations.
+ *********************************************/
+
+/* Core control blocks */
+CCB cctx[MAX_CORES];
+
+
+/* 
+	The current core's CCB. This must only be used in a 
+	non-preemtpive context.
+ */
+#define CURCORE (cctx[cpu_core_id])
+
+/* 
+	The current thread. This is a pointer to the TCB of the thread 
+	currently executing on this core.
+	This must only be used in non-preemptive context.
+*/
+#define CURTHREAD (CURCORE.current_thread)
+
+
+/*
+	This can be used in the preemptive context to
+	obtain the current thread.
+ */
+TCB* cur_thread()
+{
+  int preempt = preempt_off;
+  TCB* cur = CURTHREAD;
+  if(preempt) preempt_on;
+  return cur;
+}
+
+
 /*
    The thread layout.
   --------------------
@@ -97,7 +134,7 @@ void gain(int preempt); /* forward */
 static void thread_start()
 {
 	gain(1);
-	CURTHREAD->thread_func();
+	cur_thread()->thread_func();
 
 	/* We are not supposed to get here! */
 	assert(0);
@@ -178,7 +215,7 @@ void release_TCB(TCB* tcb)
  */
 
 /* Core control blocks */
-CCB cctx[MAX_CORES];
+//CCB cctx[MAX_CORES];
 
 /*
   The scheduler queue is implemented as a doubly linked list. The
