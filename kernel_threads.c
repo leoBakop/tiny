@@ -5,7 +5,7 @@
 #include "util.h"
 // new code by Alexandra. 
 /*
-In this new function , named new_start_main_thread() 
+In this new function , named start_another_thread() 
  we are going to slightly change start_main_thread() 
  in order to call this as an argument to the new spawn function, called in CreateThread
  as asked by the project
