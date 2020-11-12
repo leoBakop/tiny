@@ -14,12 +14,12 @@ void start_another_thread()
 {
 int exitval;
 
-//Task call = CURTHREAD->ptcb->task;
-Task call = CURTHREAD->ptcb_owner->task;
-//int argl = CURTHREAD->argl;
-//void* args = CURTHREAD->args;
-int argl=CURTHREAD->ptcb_owner->argl;
-void* args= CURTHREAD->ptcb_owner->args;
+Task call = CURTHREAD->ptcb->task;
+//Task call = CURTHREAD->ptcb_owner->task;
+int argl = CURTHREAD->argl;
+void* args = CURTHREAD->args;
+//int argl=CURTHREAD->ptcb_owner->argl;
+//void* args= CURTHREAD->ptcb_owner->args;
 
 exitval = call(argl,args);
 
