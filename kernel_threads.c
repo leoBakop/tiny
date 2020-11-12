@@ -82,8 +82,7 @@ if(ptcb->detached == 1 ){
   return -1;
 }
 
-if(currptcb equals ptcb ){
-
+if(currptcb->tcb == ptcb->tcb ){
   return -1;
 }
 
@@ -93,8 +92,17 @@ if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
 
 refcountIncr(ptcb);
 kernel_wait(& ptcb->exit_cv, SCHED_USER);
-exitval= & ptcb->exitval;
-return 0;
+if(ptcb->exited ==0){
+  return -1;
+}
+
+if(ptcb->exited ==1){
+  exitval= & ptcb->exitval;
+  refcountDec(ptcb);
+  return 0;
+}
+return -1;
+
 }
 
 //new code by bill
@@ -109,15 +117,17 @@ int sys_ThreadDetach(Tid_t tid)
 {
   PTCB* ptcb= (PTCB* ) tid;
   PCB* pcb= CURPROC;
+
+
   if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
     return -1;
   }
-
-
   if(ptcb->exited==1){
     return -1;
   }
 
+  kernel_broadcast(& ptcb->exit_cv);
+  ptcb->refcount=0;
   ptcb->detached=1;
   return 0;
 
@@ -178,13 +188,13 @@ void sys_ThreadExit(int exitval)
         curproc->exitval = exitval;
     }else{
 
-
       PTCB* ptcb=CURTHREAD->owner_ptcb;
       ptcb->exited=1;
       ptcb->exitval=exitval  //save the thread exitval to the ptcb exitval
+      ptcb->tcb->state= EXITED;
       if(ptcb->refcount > 0){  //if there are some THREAD who haved join ptcb
-          kernel_broadcast(CURTHREAD->ptcb->exit_cv); //inform the other threads 
-          refcountDec(ptcb);   
+          kernel_broadcast(& ptcb->exit_cv); //inform the other threads 
+         //refcountDec(ptcb);   
       }else{
           //if refcount==0 then destroy the ptcb and remove it from the pcb's list
           rlist_remove(& curproc->ptcb_list, ptcb);
