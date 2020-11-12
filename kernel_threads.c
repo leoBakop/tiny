@@ -37,7 +37,7 @@ ThreadExit(exitval);
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
-  PCB* pcb = CURPROC ;
+  PCB* pcb = malloc(sizeof(PCB));
    
   PTCB *ptcb = xmalloc(sizeof(PTCB));
 
