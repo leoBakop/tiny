@@ -90,7 +90,7 @@ if(currptcb equals ptcb ){
 if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
   return -1;
 }
-	
+
 refcountIncr(ptcb);
 kernel_wait(ptcb->exit_cv, SCHED_USER);
 exitval= & ptcb->exitval;
@@ -103,9 +103,25 @@ return 0;
 /**
   @brief Detach the given thread.
   */
+//new code by adiaforos
+
 int sys_ThreadDetach(Tid_t tid)
 {
-	return -1;
+  PTCB* ptcb= (PTCB* ) tid;
+  PCB* pcb= CURPROC;
+  if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
+    return -1;
+  }
+
+
+  if(ptcb->exited==1){
+    return -1;
+  }
+
+  ptcb->detached=1;
+  return 0;
+
+	
 }
 
 /**
@@ -162,7 +178,9 @@ void sys_ThreadExit(int exitval)
         curproc->exitval = exitval;
     }else{
 
+
       PTCB* ptcb=CURTHREAD->owner_ptcb;
+      ptcb->exited=1;
       ptcb->exitval=exitval  //save the thread exitval to the ptcb exitval
       if(ptcb->refcount > 0){  //if there are some THREAD who haved join ptcb
           kernel_broadcast(CURTHREAD->ptcb->exit_cv); //inform the other threads 
@@ -179,3 +197,4 @@ void sys_ThreadExit(int exitval)
 }
 
 //end code of lui
+
