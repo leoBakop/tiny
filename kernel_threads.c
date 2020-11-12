@@ -10,7 +10,6 @@ In this new function , named new_start_main_thread()
  in order to call this as an argument to the new spawn function, called in CreateThread
  as asked by the project
 */
-
 void start_another_thread()
 {
 int exitval;
@@ -43,12 +42,12 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 initialize_PTCB(ptcb,pcb); //check if curproc is correct
 
 if( args == NULL){
-	ptcb-> args = NULL;
+  ptcb-> args = NULL;
 }
 else
 {
-	ptcb-> args = malloc(argl);
-	memcpy(ptcb->args , args, argl); 
+  ptcb-> args = malloc(argl);
+  memcpy(ptcb->args , args, argl); 
 }
 
 //rlist_push_back(& pcb->ptcb_list, ptcb); 
@@ -56,20 +55,29 @@ else
 //*newNode =rlnode_init(&ptcb->node , ptcb);
 
 if(task != NULL)
-{	
-	rlist_push_back(& pcb->ptcb_list, ptcb); 
-	TCB* tcb = spawn_thread(ptcb, start_another_thread);
-	pcb->thread_count ++;
-	wakeup(tcb); //etoimase ena tcb gia ton scheduler
+{ 
+  
+  TCB* tcb = spawn_thread(ptcb, start_another_thread); //spawn thread also connects ptcb with tcb
+  rlist_push_back(& pcb->ptcb_list, ptcb); 
+  pcb->thread_count ++;
+  wakeup(tcb); //etoimase ena tcb gia ton scheduler
 }
 
-return (Tid_t) ptcb;	
+return (Tid_t) ptcb;  
 }
 
 //new code by bill
 Tid_t sys_ThreadSelf()
 {
-	return (PTCB* ) CURTHREAD->ptcb_owner;
+  return (PTCB* ) CURTHREAD->ptcb_owner;
+}
+/**
+  @brief Return the Tid of the current thread.
+ */
+//new code by bill
+Tid_t sys_ThreadSelf()
+{
+	return (Tid_t) CURTHREAD->ptcb_owner;
 }
 
 /**
