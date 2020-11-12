@@ -180,7 +180,7 @@ TCB* cur_thread();
 */
 #define CURPROC (cur_thread()->owner_pcb)
 
-#define CURTHREAD (CURCORE.current_thread)
+//#define CURTHREAD (CURCORE.current_thread)
 
 /**
   @brief A timeout constant, denoting no timeout for sleep.
