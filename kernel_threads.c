@@ -15,9 +15,12 @@ void start_another_thread()
 {
 int exitval;
 
-Task call = CURTHREAD->ptcb->task;
-int argl = CURTHREAD->argl;
-void* args = CURTHREAD->args;
+//Task call = CURTHREAD->ptcb->task;
+Task call = CURTHREAD->ptcb_owner->task;
+//int argl = CURTHREAD->argl;
+//void* args = CURTHREAD->args;
+int argl=CURTHREAD->ptcb_owner->argl;
+void* args= CURTHREAD->ptcb_owner->args;
 
 exitval = call(argl,args);
 
@@ -48,12 +51,13 @@ else
 	memcpy(ptcb->args , args, argl); 
 }
 
-rlist_push_back(& pcb->ptcb_list, ptcb); 
+//rlist_push_back(& pcb->ptcb_list, ptcb); 
 //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
 //*newNode =rlnode_init(&ptcb->node , ptcb);
 
 if(task != NULL)
-{
+{	
+	rlist_push_back(& pcb->ptcb_list, ptcb); 
 	TCB* tcb = spawn_thread(ptcb, start_another_thread);
 	pcb->thread_count ++;
 	wakeup(tcb); //etoimase ena tcb gia ton scheduler
