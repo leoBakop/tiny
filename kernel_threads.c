@@ -3,9 +3,11 @@
 #include "kernel_sched.h"
 #include "kernel_proc.h"
 #include "util.h"
+#include "kernel_cc.h"
+//#include "kernel_sched.c"
 // new code by Alexandra. 
 /*
-In this new function , named start_another_thread() 
+In this new function , named new_start_main_thread() 
  we are going to slightly change start_main_thread() 
  in order to call this as an argument to the new spawn function, called in CreateThread
  as asked by the project
@@ -15,15 +17,15 @@ void start_another_thread()
 int exitval;
 
 Task call = CURTHREAD->owner_ptcb->task;
-//Task call = CURTHREAD->ptcb_owner->task;
-int argl = CURTHREAD->argl;
-void* args = CURTHREAD->args;
-//int argl=CURTHREAD->ptcb_owner->argl;
-//void* args= CURTHREAD->ptcb_owner->args;
+//Task call = CURTHREAD->owner_ptcb->task;
+//int argl = CURTHREAD->argl;
+//void* args = CURTHREAD->args;
+int argl=CURTHREAD->owner_ptcb->argl;
+void* args= CURTHREAD->owner_ptcb->args;
 
 exitval = call(argl,args);
 
-sys_ThreadExit(exitval);
+ThreadExit(exitval);
 }
 
 //end of new code
@@ -35,42 +37,42 @@ sys_ThreadExit(exitval);
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
- PCB* pcb = CURPROC ;
- 
- PTCB *ptcb = xmalloc(sizeof(PTCB));
+  PCB* pcb = CURPROC ;
+   
+  PTCB *ptcb = xmalloc(sizeof(PTCB));
 
-initialize_PTCB(ptcb,pcb); //check if curproc is correct
+  initialize_PTCB(ptcb,pcb); //check if curproc is correct
 
-if( args == NULL){
-  ptcb-> args = NULL;
-}
-else
-{
-  ptcb-> args = malloc(argl);
-  memcpy(ptcb->args , args, argl); 
-}
+  if( args == NULL){
+    ptcb-> args = NULL;
+  }
+  else
+  {
+    ptcb-> args = malloc(argl);
+    memcpy(ptcb->args , args, argl); 
+  }
 
-//rlist_push_back(& pcb->ptcb_list, ptcb); 
-//anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
-//*newNode =rlnode_init(&ptcb->node , ptcb);
+  //rlist_push_back(& pcb->ptcb_list, ptcb); 
+  //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
+  //*newNode =rlnode_init(&ptcb->node , ptcb);
 
-if(task != NULL)
-{ 
-  
-  TCB* tcb = spawn_thread(ptcb, start_another_thread); //spawn thread also connects ptcb with tcb
-  rlist_push_back(& pcb->ptcb_list, ptcb); 
-  pcb->thread_count ++;
-  wakeup(tcb); //etoimase ena tcb gia ton scheduler
-}
+  if(task != NULL)
+  { 
+    
+    TCB* tcb = spawn_thread(ptcb, start_another_thread); //spawn thread also connects ptcb with tcb
+    rlist_push_back(& pcb->ptcb_list, ptcb); 
+    pcb->thread_count ++;
+    wakeup(tcb); //etoimase ena tcb gia ton scheduler
+  }
 
-return (Tid_t) ptcb;  
+  return (Tid_t) ptcb;  
 }
 
 
 //new code by bill
 Tid_t sys_ThreadSelf()
 {
-	return (Tid_t) cur_thread();
+	return (Tid_t) CURTHREAD->owner_ptcb;
 }
 
 /**
@@ -80,7 +82,7 @@ Tid_t sys_ThreadSelf()
 int sys_ThreadJoin(Tid_t tid, int* exitval){
 
   PTCB* ptcb= (PTCB*) tid;
-  PTCB* currptcb= CURTHREAD->ptcb_owner;
+  PTCB* currptcb= CURTHREAD->owner_ptcb;
   PCB* curproc= CURPROC;
 
 if(ptcb->detached == 1 ){
@@ -91,7 +93,7 @@ if(currptcb->tcb == ptcb->tcb ){
   return -1;
 }
 
-if(rlist_find(& curproc->ptcb_list, ptcb, -1)==-1){
+if(rlist_find(& curproc->ptcb_list, ptcb, & curproc->ptcb_list)== & curproc->ptcb_list){
   return -1;
 }
 
@@ -124,7 +126,7 @@ int sys_ThreadDetach(Tid_t tid)
   PCB* pcb= CURPROC;
 
 
-  if(rlist_find(& pcb->ptcb_list, ptcb, -1)==-1){
+  if(rlist_find(& pcb->ptcb_list, ptcb, & pcb->ptcb_list)== & pcb->ptcb_list){
     return -1;
   }
   if(ptcb->exited==1){
@@ -202,12 +204,12 @@ void sys_ThreadExit(int exitval)
          //refcountDec(ptcb);   
       }else{
           //if refcount==0 then destroy the ptcb and remove it from the pcb's list
-          rlist_remove(& curproc->ptcb_list, ptcb);
+          rlist_remove(ptcb);
           free(ptcb);  
 
           }
    }
-   kerenel_sleep(EXITED, SCHED_USER); //koimisoy ton ypno toy dikaioy
+   kernel_sleep(EXITED, SCHED_USER); //koimisoy ton ypno toy dikaioy
 
 }
 
