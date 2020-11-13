@@ -4,6 +4,7 @@
 #include "kernel_proc.h"
 #include "util.h"
 #include "kernel_cc.h"
+#include "kernel_streams.h"
 //#include "kernel_sched.c"
 // new code by Alexandra. 
 /*
@@ -17,9 +18,6 @@ void start_another_thread()
 int exitval;
 
 Task call = CURTHREAD->owner_ptcb->task;
-//Task call = CURTHREAD->owner_ptcb->task;
-//int argl = CURTHREAD->argl;
-//void* args = CURTHREAD->args;
 int argl=CURTHREAD->owner_ptcb->argl;
 void* args= CURTHREAD->owner_ptcb->args;
 
@@ -37,26 +35,29 @@ ThreadExit(exitval);
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
-  PCB* pcb = CURPROC;
+  
+  PCB* pcb = CURPROC ;
+
    
-  PTCB *ptcb = xmalloc(sizeof(PTCB));
+  PTCB *ptcb;
 
-  initialize_PTCB(ptcb,pcb); 
-
-  if( args == NULL){
-    ptcb-> args = NULL;
-  }
-  else
-  {
-    ptcb-> args = malloc(argl);
-    memcpy(ptcb->args , args, argl); 
-  }
-
+  
+    
+  //rlist_push_back(& pcb->ptcb_list, ptcb); 
+  //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
+  //*newNode =rlnode_init(&ptcb->node , ptcb);
+  
   if(task != NULL)
   { 
+    TCB* tcb = spawn_thread(pcb, start_another_thread); //spawn thread also connects ptcb with tcb
+    ptcb=initialize_PTCB(); //check if curproc is correct
+    ptcb->args = args;
+    ptcb->argl=argl;
     
-    TCB* tcb = spawn_thread(ptcb, start_another_thread); //spawn thread also connects ptcb with tcb
-    rlist_push_back(& pcb->ptcb_list, ptcb); 
+    //new code
+    ptcb->task=task;
+    //end of new code
+    rlist_push_back(& pcb->ptcb_list,& ptcb->ptcb_list_node); 
     pcb->thread_count ++;
     wakeup(tcb); //etoimase ena tcb gia ton scheduler
   }
@@ -89,7 +90,7 @@ if(currptcb->tcb == ptcb->tcb ){
   return -1;
 }
 
-if(rlist_find(& curproc->ptcb_list, ptcb, & curproc->ptcb_list)== & curproc->ptcb_list){
+if(! rlist_find(& curproc->ptcb_list, ptcb, NULL)){
   return -1;
 }
 
@@ -122,7 +123,7 @@ int sys_ThreadDetach(Tid_t tid)
   PCB* pcb= CURPROC;
 
 
-  if(rlist_find(& pcb->ptcb_list, ptcb, & pcb->ptcb_list)== & pcb->ptcb_list){
+  if(! rlist_find(& pcb->ptcb_list, ptcb, NULL)){
     return -1;
   }
   if(ptcb->exited==1){
@@ -200,7 +201,7 @@ void sys_ThreadExit(int exitval)
          //refcountDec(ptcb);   
       }else{
           //if refcount==0 then destroy the ptcb and remove it from the pcb's list
-          rlist_remove(ptcb);
+          rlist_remove(& ptcb->ptcb_list_node);
           free(ptcb);  
 
           }
