@@ -925,6 +925,32 @@ void sleep_thread(int sec) {
 	ASSERT(Cond_TimedWait(&mx,&cond,1000*sec)==0);
 }
 
+/* 
+	Helper that spawns a process, waits for its completion
+	and returns its status.
+ */
+
+int run_get_status(Task task, int argl, void* args)
+{
+	Pid_t pid = Exec(task, argl, args);
+	ASSERT(pid!=NOPROC);
+
+	int exitval;
+	ASSERT(WaitChild(pid, &exitval)==pid);
+
+	return exitval;
+}
+
+
+BOOT_TEST(test_threadself,
+	"Test that ThreadSelf is somewhat sane")
+{
+	ASSERT(ThreadSelf() != NOTHREAD);
+	ASSERT(ThreadSelf() == ThreadSelf());
+	return 0;
+}
+
+
 
 BOOT_TEST(test_join_illegal_tid_gives_error,
 	"Test that ThreadJoin rejects an illegal Tid")
@@ -977,10 +1003,24 @@ BOOT_TEST(test_create_join_thread,
 	}
 
 	Tid_t t = CreateThread(task, sizeof(flag), &flag);
+
+	/* Success in creating thread */
 	ASSERT(t!=NOTHREAD);
 	int exitval;
+	
+	/* Join should succeed */
 	ASSERT(ThreadJoin(t, &exitval)==0);
+
+	/* Exit status should be correct */
+	ASSERT(exitval==2);
+
+	/* Shared variable should be updates */
 	ASSERT(flag==1);
+
+	/* A second Join should fail! */
+	ASSERT(ThreadJoin(t, NULL)==-1);
+
+
 	return 0;
 }
 
@@ -992,6 +1032,45 @@ BOOT_TEST(test_detach_self,
 }
 
 
+
+BOOT_TEST(test_detach_other,
+	"Test that a thread can detach another thread.")
+{
+
+	/* The detached thread will finish last */
+	int tdo_thread(int argl, void* args) {
+		fibo(40);
+		return 100;
+	}
+
+	int myproc(int argl, void* args) {
+		Tid_t t = CreateThread(tdo_thread, 0, NULL);
+		ASSERT(ThreadDetach(t)==0);
+		ASSERT(ThreadJoin(t, NULL)==-1);
+		return 42;
+	}
+
+
+	ASSERT(run_get_status(myproc, 0, NULL) == 42);
+
+	return 0;
+}
+
+
+BOOT_TEST(test_multiple_detach,
+	"Test that a thread can be detached many times.")
+{
+	ASSERT(ThreadDetach(ThreadSelf())==0);
+	ASSERT(ThreadDetach(ThreadSelf())==0);
+	ASSERT(ThreadDetach(ThreadSelf())==0);
+	ASSERT(ThreadDetach(ThreadSelf())==0);
+
+	return 0;
+}
+
+
+
+
 BOOT_TEST(test_join_many_threads,
 	"Test that many threads joining the same thread work ok")
 {
@@ -1001,7 +1080,7 @@ BOOT_TEST(test_join_many_threads,
 		return 5213;
 	}
 
-	Tid_t joined_tid = CreateThread(joined_thread, 0, NULL);
+	Tid_t joined_tid = NOTHREAD; 
 
 	int some_thread_joined = 0;
 
@@ -1009,19 +1088,85 @@ BOOT_TEST(test_join_many_threads,
 		int retval;
 		int rc = ThreadJoin(joined_tid,&retval);
 		if(rc==0) some_thread_joined = 1;
-		ASSERT(rc!=0 || retval==5213);
-		ASSERT(ThreadDetach(ThreadSelf()));
+		ASSERT(rc==-1 || retval==5213);
 		return 0;
 	}
 
-	for(int i=0;i<5;i++) {
-		CreateThread(joiner_thread,0,NULL);
+
+	int mymain(int argl, void* args) {
+		Tid_t tids[5];
+
+
+		joined_tid = CreateThread(joined_thread, 0, NULL);
+		ASSERT(joined_tid != NOTHREAD);
+
+		for(int i=0;i<5;i++) {
+			tids[i] = CreateThread(joiner_thread,0,NULL);
+			ASSERT(tids[i]!=NOTHREAD);
+		}
+
+		/* Wait for all joiner_threads to finish */
+		for(int i=0;i<5;i++) {
+			ASSERT(ThreadJoin(tids[i], NULL)==0);
+			/* tids[i] should be cleaned by ThreadJoin */
+			ASSERT(ThreadDetach(tids[i])==-1);
+		}
+
+		/* Check that at least one succeeded at joining */
+		ASSERT(some_thread_joined);
+		return 0;
 	}
 
-	ASSERT(some_thread_joined);
+
+	ASSERT(run_get_status(mymain, 0, NULL)==0);
 	return 0;
 }
 
+
+BOOT_TEST(test_join_main_thread,
+	"Test that the main thread can be joined by another thread")
+{
+
+	Tid_t mttid;
+
+	int notmain_thread(int argl, void* args) {
+		ASSERT(ThreadJoin(mttid, NULL)==0);
+		return 0;
+	}
+
+	int main_thread(int argl, void* args) {
+		mttid = ThreadSelf();
+		ASSERT(CreateThread(notmain_thread,0,NULL)!=NOTHREAD);
+		return 42;
+	}
+
+	ASSERT(run_get_status(main_thread, 0, NULL) == 42);
+	return 0;
+}
+
+
+BOOT_TEST(test_detach_main_thread,
+	"Test that the main thread can be detached")
+{
+	Tid_t mttid;
+
+	int notmain_thread(int argl, void* args) {
+		ASSERT(ThreadJoin(mttid, NULL)==-1);
+		return 0;
+	}
+
+	int main_thread(int argl, void* args) {
+		mttid = ThreadSelf();
+		ASSERT(CreateThread(notmain_thread,0,NULL)!=NOTHREAD);
+		sleep_thread(1);
+		ASSERT(ThreadDetach(ThreadSelf())==0);
+		return 42;
+	}
+
+
+	ASSERT(run_get_status(main_thread, 0, NULL) == 42);
+	return 0;
+}
 
 
 BOOT_TEST(test_detach_after_join,
@@ -1034,62 +1179,120 @@ BOOT_TEST(test_detach_after_join,
 		return 5213;
 	}
 
-	Tid_t joined_tid = CreateThread(joined_thread, 0, NULL);
+	Tid_t joined_tid;
 
-	int joiner_thread(int argl, void* args) {
+
+	int joiner_thread(int argl, void* args) 
+	{
 		int retval;
 		int rc = ThreadJoin(joined_tid,&retval);
 		ASSERT(rc==-1);
-		ASSERT(ThreadDetach(ThreadSelf()));
 		return 0;
 	}
 
-	for(int i=0;i<5;i++) {
-		CreateThread(joiner_thread,0,NULL);
+
+	int main_thread(int argl, void* args) 
+	{
+
+	 	joined_tid = CreateThread(joined_thread, 0, NULL);
+	 	ASSERT(joined_thread != NOTHREAD);
+
+		Tid_t tids[5];
+		for(int i=0;i<5;i++) {
+			tids[i] = CreateThread(joiner_thread,0,NULL);
+			ASSERT(tids[i]!=NOTHREAD);
+		}
+
+		for(int i=0;i<5;i++) {
+			ASSERT(ThreadJoin(tids[i], NULL)==0);
+		}
+
+		return 0;		
 	}
+
+
+	run_get_status(main_thread, 0, NULL);
 	return 0;
 }
 
 
 
 BOOT_TEST(test_exit_many_threads,
-	"Test that a process thread calling Exit will clean up correctly."
+	"Test that if many process threads call Exit, the process will clean up correctly."
 	)
 {
 
 	int task(int argl, void* args) {
-		fibo(45);
-		return 2;
+		fibo(40);
+		Exit(40 + argl);
+		return 0;
+	}
+
+	int mthread(int argl, void* args){
+		for(int i=0;i<5;i++)
+			ASSERT(CreateThread(task, i, NULL) != NOTHREAD);
+
+		/* This thread calls ThreadExit probably before the children all exit */
+		ThreadExit(0);
+		return 0;
+	}
+
+
+	int status = run_get_status(mthread, 0, NULL);
+	ASSERT(40 <= status && status < 45);
+	return 0;
+}
+
+
+BOOT_TEST(test_main_exit_cleanup,
+	"Test that a process where only the main thread calls Exit, will clean up correctly."
+	)
+{
+
+	int task(int argl, void* args) {
+		fibo(40);
+		ThreadExit(2);
+		FAIL("We should not be here");
+		return 0;
+	}
+
+	int main_thread(int argl, void* args){
+		for(int i=0;i<5;i++)
+			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
+
+		/* This thread calls exit probably before the children all exit */
+		return 42;
+	}
+
+	ASSERT(run_get_status(main_thread, 0, NULL)==42);
+	return 0;
+}
+
+
+BOOT_TEST(test_noexit_cleanup,
+	"Test that a process where no thread calls Exit, will clean up correctly."
+	)
+{
+
+	int task(int argl, void* args) {
+		fibo(40);
+		ThreadExit(2);
+		FAIL("We should not be here");
+		return 0;
 	}
 
 	int mthread(int argl, void* args){
 		for(int i=0;i<5;i++)
 			ASSERT(CreateThread(task, 0, NULL) != NOTHREAD);
 
-		fibo(35);
-		return 0;
+		/* This thread calls exit probably before the children all exit */
+		ThreadExit(0);
+		FAIL("We should not be here");
+		return 42;
 	}
 
-	Exec(mthread, 0, NULL);
-	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
 
-	return 0;
-}
-
-BOOT_TEST(test_nonexit_cleanup,
-	"Test that a process where the main thread calls Exit, will still clean up correctly."
-	)
-{
-
-	int mthread(int argl, void* args){
-		ThreadExit(44);
-		FAIL("ThreadExit returned");  /* We should fail if ThreadExit returns */
-		return 0;
-	}
-
-	Exec(mthread, 0, NULL);
-	ASSERT(WaitChild(NOPROC, NULL)!=NOPROC);
-
+	run_get_status(mthread, 0, NULL);
 	return 0;
 }
 
@@ -1098,7 +1301,7 @@ BOOT_TEST(test_cyclic_joins,
 	"Test that a set of cyclically joined threads will not deadlock once the cycle breaks")
 {
 	const unsigned int N=5;
-	barrier B;
+	barrier B = BARRIER_INIT;
 	Tid_t tids[N];
 
 	int join_thread(int argl, void* args) {
@@ -1107,22 +1310,30 @@ BOOT_TEST(test_cyclic_joins,
 		return argl;
 	}
 
-	/* spawn all N threads */
-	for(unsigned int i=0;i<N;i++) {
-		tids[i] = CreateThread(join_thread, (i+1)%N, NULL);
-		assert(tids[i]!=NOTHREAD); /* small assert! do not proceed unless threads are created! */
-	}
-	/* allow threads to join */
-	BarrierSync(&B, N+1);
-	/* Wait for threads to proceed */
-	sleep_thread(1);
-	/* Now, threads are in deadlock! To break the deadlock,
-	   detach thread 0. */
-	ThreadDetach(tids[0]);
-	/* To make sure that other threads escape deadlock, join them! */
-	for(unsigned int i=1; i<N; i++)
-		ASSERT(ThreadJoin(tids[i], NULL)==0);	
 
+	int main_thread(int argl, void* args) 
+	{
+
+		/* spawn all N threads */
+		for(unsigned int i=0;i<N;i++) {
+			tids[i] = CreateThread(join_thread, (i+1)%N, NULL);
+			assert(tids[i]!=NOTHREAD); /* small assert! do not proceed unless threads are created! */
+		}
+
+		/* allow threads to join */
+		BarrierSync(&B, N+1);
+
+		/* Wait for threads to proceed */
+		sleep_thread(1);
+
+		/* Now, threads are in deadlock! To break the deadlock,
+		   detach thread 0. */
+		ThreadDetach(tids[0]);
+
+		return 0;
+	}
+
+	run_get_status(main_thread, 0, NULL);
 	return 0;
 }
 
@@ -1134,11 +1345,16 @@ TEST_SUITE(thread_tests,
 	&test_join_illegal_tid_gives_error,
 	&test_detach_illegal_tid_gives_error,
 	&test_detach_self,
+	&test_detach_other,
+	&test_multiple_detach,
+	&test_join_main_thread,
+	&test_detach_main_thread,
 	&test_detach_after_join,
 	&test_create_join_thread,
 	&test_join_many_threads,
 	&test_exit_many_threads,
-	&test_nonexit_cleanup,
+	&test_main_exit_cleanup,
+	&test_noexit_cleanup,
 	&test_cyclic_joins,
 	NULL
 };
