@@ -37,11 +37,11 @@ ThreadExit(exitval);
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
-  PCB* pcb = malloc(sizeof(PCB));
+  PCB* pcb = CURPROC;
    
   PTCB *ptcb = xmalloc(sizeof(PTCB));
 
-  initialize_PTCB(ptcb,pcb); //check if curproc is correct
+  initialize_PTCB(ptcb,pcb); 
 
   if( args == NULL){
     ptcb-> args = NULL;
@@ -51,10 +51,6 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
     ptcb-> args = malloc(argl);
     memcpy(ptcb->args , args, argl); 
   }
-
-  //rlist_push_back(& pcb->ptcb_list, ptcb); 
-  //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
-  //*newNode =rlnode_init(&ptcb->node , ptcb);
 
   if(task != NULL)
   { 
