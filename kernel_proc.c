@@ -58,25 +58,23 @@ static inline void initialize_PCB(PCB* pcb)
 *initialize a PTCB
 **/
 
- void initialize_PTCB(PTCB* ptcb, PCB* pcb){
+ PTCB* initialize_PTCB(){
+
+  PTCB* ptcb=(PTCB*)xmalloc(sizeof(PTCB));
     
     /* initialize in ptcb*/
 	
 	ptcb->tcb=NULL; //this variable initialized in spawnThread()
-	ptcb->task=pcb->main_task; //pcbs task is current task
-	ptcb->argl=pcb->argl;
-	ptcb->args=pcb->args;
-	ptcb->exitval=NULL; // we are going to initiallize it when the thread will be finished
 	ptcb->exited=0;
 	ptcb->detached=0;
 	ptcb->exit_cv = COND_INIT;
 	ptcb->refcount=0;
-	rlnode_init(& ptcb->ptcb_list_node, NULL);
+	rlnode_init(& ptcb->ptcb_list_node, ptcb);
 
 	/*inform pcb for the new ptcb*/
-	rlist_push_back(& pcb->ptcb_list,& ptcb->ptcb_list_node);
-	pcb->thread_count++;
-
+	//rlist_push_back(& pcb->ptcb_list,& ptcb->ptcb_list_node);
+	//pcb->thread_count++;
+  return ptcb;
 
 }
 
@@ -90,8 +88,7 @@ void refcountIncr(PTCB* ptcb){
 void refcountDec(PTCB* ptcb){
 	ptcb->refcount--;
 	if(ptcb->refcount==0){
-		PCB* curproc=CURPROC;
-		rlist_remove(ptcb);
+		rlist_remove(& ptcb->ptcb_list_node);
 		free(ptcb);
 	}
 }
@@ -231,23 +228,19 @@ Pid_t sys_Exec(Task call, int argl, void* args)
    */
  //new code segment by Alexandra :
 
-  PTCB*  ptcb = (PTCB*)xmalloc(sizeof(PTCB));
+  PTCB*  ptcb;
 
-  initialize_PTCB(ptcb,newproc);
+  ptcb=initialize_PTCB();
+  rlnode_init(& newproc->ptcb_list, NULL);
 
-if( args == NULL){
-	ptcb->args = NULL;
-}
-else{
-	ptcb->args = malloc(argl);
-	memcpy(ptcb->args , args, argl); // to copy the content
-}
 
 
 if(call != NULL) {
-    ptcb->tcb =spawn_thread(ptcb,start_main_thread);
+    newproc->main_thread =spawn_thread(newproc,start_main_thread);
     newproc->thread_count ++;
-    rlist_push_back(& newproc->ptcb_list ,ptcb);
+    newproc->main_thread->owner_ptcb=ptcb;
+    ptcb->tcb=newproc->main_thread;
+    rlist_push_back(& newproc->ptcb_list ,& ptcb->ptcb_list_node);
     wakeup(ptcb->tcb);
   }
 finish:
