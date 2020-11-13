@@ -202,7 +202,7 @@ TCB* cur_thread();
     @param func The function to execute in the new thread.
     @returns  A pointer to the TCB of the new thread, in the @c INIT state.
 */
-TCB* spawn_thread(PTCB* ptcb, void (*func)());
+TCB* spawn_thread(PCB* pcb, void (*func)());
 
 /**
   @brief Wakeup a blocked thread.
