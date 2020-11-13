@@ -78,25 +78,30 @@ Tid_t sys_ThreadSelf()
 
 int sys_ThreadJoin(Tid_t tid, int* exitval){
 
+  if(tid==sys_ThreadSelf())
+    return -1; 
+  if(tid == NOTHREAD)
+    return -1;
+
   PTCB* ptcb= (PTCB*) tid;
-  PTCB* currptcb= CURTHREAD->owner_ptcb;
   PCB* curproc= CURPROC;
+  rlnode* node = rlist_find(&curproc->ptcb_list, ptcb, NULL); //node is the first node that contains the ptcb
+  /*if this node doesn't exist (is null)
+  *it means that the given ptcb
+  *doesn't belong in this 
+  *PCB
+  */
+ if(node==NULL){
+  return -1;
+} 
 
 if(ptcb->detached == 1 ){
   return -1;
 }
 
-if(currptcb->tcb == ptcb->tcb ){
-  return -1;
-}
-
-if(! rlist_find(& curproc->ptcb_list, ptcb, NULL)){
-  return -1;
-}
-
 refcountIncr(ptcb);
 kernel_wait(& ptcb->exit_cv, SCHED_USER);
-if(ptcb->exited ==0){
+if(ptcb->exited ==1){
   return -1;
 }
 
@@ -107,7 +112,7 @@ if(ptcb->exited ==1){
 }
 return -1;
 
-}
+}  
 
 //new code by bill
 
