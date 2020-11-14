@@ -6,28 +6,6 @@
 #include "kernel_cc.h"
 #include "kernel_streams.h"
 //#include "kernel_sched.c"
-// new code by Alexandra. 
-/*
-In this new function , named new_start_main_thread() 
- we are going to slightly change start_main_thread() 
- in order to call this as an argument to the new spawn function, called in CreateThread
- as asked by the project
-*/
-void start_another_thread()
-{
-int exitval;
-
-Task call = CURTHREAD->owner_ptcb->task;
-int argl=CURTHREAD->owner_ptcb->argl;
-void* args= CURTHREAD->owner_ptcb->args;
-
-exitval = call(argl,args);
-
-ThreadExit(exitval);
-}
-
-//end of new code
-
 
 
 /** 
