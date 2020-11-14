@@ -100,7 +100,8 @@ enum SCHED_CAUSE {
 typedef struct thread_control_block {
 
 	PCB* owner_pcb; /**< @brief This is null for a free TCB */
-        PTCB* owner_ptcb; //new code
+  PTCB* owner_ptcb; //new code
+  int priority;  //new code
 	cpu_context_t context; /**< @brief The thread context */
 	Thread_type type; /**< @brief The type of thread */
 	Thread_state state; /**< @brief The state of the thread */
@@ -279,6 +280,11 @@ void initialize_scheduler(void);
   This is the default quantum for each thread, in microseconds.
   */
 #define QUANTUM (10000L)
+
+
+//new code
+void upgrade_priority();
+//end of new code
 
 /** @} */
 
