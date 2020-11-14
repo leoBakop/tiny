@@ -262,6 +262,8 @@ if(call != NULL) {
     newproc->thread_count ++;
     newproc->main_thread->owner_ptcb=ptcb;
     ptcb->tcb=newproc->main_thread;
+    ptcb->argl = newproc->argl;
+    ptcb->args = newproc->args;
     rlist_push_back(& newproc->ptcb_list ,& ptcb->ptcb_list_node);
     wakeup(ptcb->tcb);
   }
