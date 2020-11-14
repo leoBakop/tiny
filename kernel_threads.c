@@ -31,7 +31,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
     ptcb=initialize_PTCB(); //check if curproc is correct
     ptcb->args = args;
     ptcb->argl=argl;
-    
+    ptcb->tcb=tcb;
     //new code
     ptcb->task=task;
     //end of new code
