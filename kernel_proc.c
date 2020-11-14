@@ -68,6 +68,9 @@ static inline void initialize_PCB(PCB* pcb)
 	ptcb->exited=0;
 	ptcb->detached=0;
 	ptcb->exit_cv = COND_INIT;
+	ptcb->task = NULL;
+        ptcb->argl = 0;
+	ptcb->args = NULL;
 	ptcb->refcount=0;
 	rlnode_init(& ptcb->ptcb_list_node, ptcb);
 
