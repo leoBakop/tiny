@@ -425,7 +425,7 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause,
 /* This function is the entry point to the scheduler's context switching */
 
 int N=0;
-static int period=5;
+static int period=150;
 
 void yield(enum SCHED_CAUSE cause)
 {	
