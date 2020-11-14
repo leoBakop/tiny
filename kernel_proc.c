@@ -174,6 +174,28 @@ void start_main_thread()
   Exit(exitval);
 }
 
+// new code by Alexandra. 
+/*
+In this new function , named new_start_main_thread() 
+ we are going to slightly change start_main_thread() 
+ in order to call this as an argument to the new spawn function, called in CreateThread
+ as asked by the project
+*/
+void start_another_thread()
+{
+int exitval;
+
+Task call = cur_thread()->owner_ptcb->task;
+int argl=cur_thread()->owner_ptcb->argl;
+void* args= cur_thread()->owner_ptcb->args;
+
+exitval = call(argl,args);
+
+ThreadExit(exitval);
+}
+
+//end of new code
+
 /*
 	System call to create a new process.
  */
