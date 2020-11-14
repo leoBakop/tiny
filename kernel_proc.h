@@ -96,6 +96,7 @@ typedef struct process_thread_control_block{
   any data structures related to process creation.
 */
 void initialize_processes();
+void start_another_thread();
 
 /**
   @brief Get the PCB for a PID.
