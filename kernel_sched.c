@@ -509,6 +509,7 @@ void upgrade_priority(){
 	for(int i=1; i<Priority_Queues; i++){
 		for(int j=0; j< (int)rlist_len(&SCHED[i]); j++){
 			node=rlist_pop_front(&SCHED[i]);
+			node->tcb->priority--;
 			rlist_push_front(&SCHED[i-1], node);
 		}
 	}
