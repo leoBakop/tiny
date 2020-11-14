@@ -47,7 +47,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 //new code by bill
 Tid_t sys_ThreadSelf()
 {
-	return (Tid_t) CURTHREAD->owner_ptcb;
+	return (Tid_t) cur_thread()->owner_ptcb;
 }
 
 /**
@@ -175,7 +175,7 @@ void sys_ThreadExit(int exitval)
         curproc->exitval = exitval;
     }else{
 
-      PTCB* ptcb=CURTHREAD->owner_ptcb;
+      PTCB* ptcb=cur_thread()->owner_ptcb;
       ptcb->exited=1;
       ptcb->exitval=exitval;  //save the thread exitval to the ptcb exitval
       ptcb->tcb->state= EXITED;
