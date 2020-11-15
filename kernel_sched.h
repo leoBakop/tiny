@@ -23,6 +23,7 @@
 #include "bios.h"
 #include "tinyos.h"
 #include "util.h"
+#include "kernel_proc.h"
 
 /*****************************
  *
@@ -180,8 +181,8 @@ TCB* cur_thread();
   i.e., the thread currently executing on this core.
 */
 #define CURPROC (cur_thread()->owner_pcb)
-#define CURCORE (cctx[cpu_core_id])
-#define CURTHREAD (CURCORE.current_thread)
+//#define CURCORE (cctx[cpu_core_id])
+//#define CURTHREAD (CURCORE.current_thread)
 
 /**
   @brief A timeout constant, denoting no timeout for sleep.
