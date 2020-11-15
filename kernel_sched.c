@@ -25,14 +25,14 @@ CCB cctx[MAX_CORES];
 	The current core's CCB. This must only be used in a 
 	non-preemtpive context.
  */
-//#define CURCORE (cctx[cpu_core_id])
+#define CURCORE (cctx[cpu_core_id])
 
 /* 
 	The current thread. This is a pointer to the TCB of the thread 
 	currently executing on this core.
 	This must only be used in non-preemptive context.
 */
-//#define CURTHREAD (CURCORE.current_thread)
+#define CURTHREAD (CURCORE.current_thread)
 
 
 /*
@@ -223,7 +223,7 @@ void release_TCB(TCB* tcb)
 
   Both of these structures are protected by @c sched_spinlock.
 */
-/* 0= maximum priority and 4 = min priority*/
+/* 0= maximum priority and  4= min priority*/
 #define Priority_Queues 5
 rlnode SCHED[Priority_Queues]; /* The scheduler queues */
 
@@ -351,7 +351,7 @@ static TCB* sched_queue_select(TCB* current)
 				next_thread = (current->state == READY) ? current : &CURCORE.idle_thread;
 
 			next_thread->its = QUANTUM;
-		break;
+			return next_thread;
 		}
 	}
 	if(empty==1){
@@ -447,17 +447,17 @@ void yield(enum SCHED_CAUSE cause)
 	/*updating priority*/
 	switch(cause){
 		case SCHED_IO:
-			if(current->priority>0){ 
+			if(current->priority > 0){ 
 				current->priority --;
 			}else{
 				current->priority=current->priority;
 			}
 		break;
 		case SCHED_QUANTUM:
-			if(current->priority<Priority_Queues-1){
+			if(current->priority < Priority_Queues-1){
 				current->priority ++;
 			}else{
-				current->priority=current->priority;
+				current->priority = current->priority;
 			}
 		break;
 		case SCHED_MUTEX:
@@ -498,7 +498,8 @@ void yield(enum SCHED_CAUSE cause)
 	   may have passed. Start a new timeslice...
 	  */
 	
-	if(N%period==0){
+	if(N==period){
+		N=0;
 		upgrade_priority();
 	}
 	gain(preempt);
@@ -507,10 +508,10 @@ void yield(enum SCHED_CAUSE cause)
 void upgrade_priority(){
 	rlnode* node;
 	for(int i=1; i<Priority_Queues; i++){
-		for(int j=0; j< (int)rlist_len(&SCHED[i]); j++){
+		while(is_rlist_empty(&SCHED[i])==0){
 			node=rlist_pop_front(&SCHED[i]);
 			node->tcb->priority--;
-			rlist_push_front(&SCHED[i-1], node);
+			rlist_push_front(& SCHED[i-1], node);
 		}
 	}
 	return;
