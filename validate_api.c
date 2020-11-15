@@ -2522,7 +2522,7 @@ TEST_SUITE(user_tests,
 {
 	&dummy_user_test,
 	NULL
-};
+}; 
 
 
 
