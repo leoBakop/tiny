@@ -8,6 +8,8 @@
 //#include "kernel_sched.c"
 
 
+
+
 /** 
   @brief Create a new thread in the current process.
   */
@@ -15,8 +17,6 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
   
   PCB* pcb = CURPROC ;
-
-   
   PTCB *ptcb;
 
   
@@ -32,10 +32,11 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
     ptcb->args = args;
     ptcb->argl=argl;
     ptcb->tcb=tcb;
+    tcb->owner_ptcb=ptcb;
     //new code
     ptcb->task=task;
     //end of new code
-    rlist_push_back(& pcb->ptcb_list,& ptcb->ptcb_list_node); 
+    rlist_push_front(& pcb->ptcb_list,& ptcb->ptcb_list_node); 
     pcb->thread_count ++;
     wakeup(tcb); //etoimase ena tcb gia ton scheduler
   }
@@ -56,10 +57,12 @@ Tid_t sys_ThreadSelf()
 
 int sys_ThreadJoin(Tid_t tid, int* exitval){
 
-  if(tid==sys_ThreadSelf())
+  if(tid==sys_ThreadSelf()){
     return -1; 
-  if(tid == NOTHREAD)
+  }
+  if(tid == NOTHREAD){
     return -1;
+  }
 
   PTCB* ptcb= (PTCB*) tid;
   PCB* curproc= CURPROC;
@@ -73,24 +76,26 @@ int sys_ThreadJoin(Tid_t tid, int* exitval){
   return -1;
 } 
 
-if(ptcb->detached == 1 ){
+if(ptcb->detached==1 ){
   return -1;
 }
 
 refcountIncr(ptcb);
 kernel_wait(& ptcb->exit_cv, SCHED_USER);
-if(ptcb->exited ==1){
+if(ptcb->detached == 1 || ptcb->exited==0){
   return -1;
 }
 
-if(ptcb->exited ==1){
-  exitval= & ptcb->exitval;
+if(ptcb->exited ==1||ptcb->detached==0){
+  if(exitval!=NULL)
+    exitval= & ptcb->exitval;
   refcountDec(ptcb);
   return 0;
 }
 return -1;
 
 }  
+
 
 //new code by bill
 
@@ -102,11 +107,19 @@ return -1;
 
 int sys_ThreadDetach(Tid_t tid)
 {
+  
+
+
+  if(tid == NOTHREAD)
+    return -1;
+  if(tid<0)
+    return -1;
+
   PTCB* ptcb= (PTCB* ) tid;
   PCB* pcb= CURPROC;
+  rlnode* node=rlist_find(& pcb->ptcb_list, ptcb, NULL);
 
-
-  if(! rlist_find(& pcb->ptcb_list, ptcb, NULL)){
+  if(node==NULL ){
     return -1;
   }
   if(ptcb->exited==1){
@@ -179,7 +192,7 @@ void sys_ThreadExit(int exitval)
       ptcb->exited=1;
       ptcb->exitval=exitval;  //save the thread exitval to the ptcb exitval
       ptcb->tcb->state= EXITED;
-      if(ptcb->refcount > 0){  //if there are some THREAD who haved join ptcb
+      if(ptcb->refcount > 0 && ptcb->detached==0){  //if there are some THREAD who haved join ptcb
           kernel_broadcast(& ptcb->exit_cv); //inform the other threads 
          //refcountDec(ptcb);   
       }else{
@@ -194,4 +207,5 @@ void sys_ThreadExit(int exitval)
 }
 
 //end code of lui
+
 
