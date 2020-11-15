@@ -41,8 +41,10 @@ static inline void initialize_PCB(PCB* pcb)
 
   rlnode_init(& pcb->children_list, NULL);
   rlnode_init(& pcb->exited_list, NULL);
+  rlnode_init(& pcb->ptcb_list, NULL);
   rlnode_init(& pcb->children_node, pcb);
   rlnode_init(& pcb->exited_node, pcb);
+
   pcb->child_exit = COND_INIT;
 
   //new code that was added by lui
@@ -67,10 +69,10 @@ static inline void initialize_PCB(PCB* pcb)
 	ptcb->tcb=NULL; //this variable initialized in spawnThread()
 	ptcb->exited=0;
 	ptcb->detached=0;
+  ptcb->task = NULL;
+  ptcb->argl = 0;
+  ptcb->args = NULL;
 	ptcb->exit_cv = COND_INIT;
-	ptcb->task = NULL;
-        ptcb->argl = 0;
-	ptcb->args = NULL;
 	ptcb->refcount=0;
 	rlnode_init(& ptcb->ptcb_list_node, ptcb);
 
@@ -187,14 +189,15 @@ In this new function , named new_start_main_thread()
 void start_another_thread()
 {
 int exitval;
+TCB* curthread= cur_thread();
 
-Task call = cur_thread()->owner_ptcb->task;
-int argl=cur_thread()->owner_ptcb->argl;
-void* args= cur_thread()->owner_ptcb->args;
+Task call = curthread->owner_ptcb->task;
+int argl=curthread->owner_ptcb->argl;
+void* args= curthread->owner_ptcb->args;
 
 exitval = call(argl,args);
 
-ThreadExit(exitval);
+sys_ThreadExit(exitval);
 }
 
 //end of new code
@@ -265,8 +268,8 @@ if(call != NULL) {
     newproc->thread_count ++;
     newproc->main_thread->owner_ptcb=ptcb;
     ptcb->tcb=newproc->main_thread;
-    ptcb->argl = newproc->argl;
-    ptcb->args = newproc->args;
+    ptcb->argl = newproc->argl; //new code by me
+    ptcb->args = newproc->args; //new code by me
     rlist_push_back(& newproc->ptcb_list ,& ptcb->ptcb_list_node);
     wakeup(ptcb->tcb);
   }
@@ -437,4 +440,7 @@ Fid_t sys_OpenInfo()
 {
 	return NOFILE;
 }
+
+
+
 
