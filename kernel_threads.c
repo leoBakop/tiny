@@ -137,7 +137,7 @@ void sys_ThreadExit(int exitval)
 {   
     PCB* curproc=CURPROC;
 
-    if (curproc->thread_count==1){ //if this thread is the last one
+    if (curproc->thread_count==0){ //if this thread is the last one
         /* Do all the other cleanup we want here, close files etc. */
         if(curproc->args) {
           free(curproc->args);
