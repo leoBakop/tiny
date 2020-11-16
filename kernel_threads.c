@@ -18,12 +18,6 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
   
   PCB* pcb = CURPROC ;
   PTCB *ptcb;
-
-  
-    
-  //rlist_push_back(& pcb->ptcb_list, ptcb); 
-  //anti gia ptcb mipos prepei na kano initialize enan neo pointer se komvo //rlnode 
-  //*newNode =rlnode_init(&ptcb->node , ptcb);
   
   if(task != NULL)
   { 
