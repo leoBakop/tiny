@@ -75,12 +75,15 @@ if(ptcb->detached==1 ){
 }
 
 refcountIncr(ptcb);
-kernel_wait(& ptcb->exit_cv, SCHED_USER);
-if(ptcb->detached == 1 || ptcb->exited==0){
+while(ptcb->exited==0 && ptcb->detached==0){
+  kernel_wait(& ptcb->exit_cv, SCHED_USER);
+}
+if(ptcb->detached == 1 ){
+  refcountDec(ptcb);
   return -1;
 }
 
-if(ptcb->exited ==1||ptcb->detached==0){
+if(ptcb->exited ==1){
   if(exitval!=NULL)
     exitval= & ptcb->exitval;
   refcountDec(ptcb);
@@ -102,8 +105,6 @@ return -1;
 int sys_ThreadDetach(Tid_t tid)
 {
   
-
-
   if(tid == NOTHREAD)
     return -1;
   if(tid<0)
@@ -111,7 +112,7 @@ int sys_ThreadDetach(Tid_t tid)
 
   PTCB* ptcb= (PTCB* ) tid;
   PCB* pcb= CURPROC;
-  rlnode* node=rlist_find(& pcb->ptcb_list, ptcb, NULL);
+  rlnode* node=rlist_find(& pcb->ptcb_list, ptcb, 0);
 
   if(node==NULL ){
     return -1;
@@ -121,7 +122,6 @@ int sys_ThreadDetach(Tid_t tid)
   }
 
   kernel_broadcast(& ptcb->exit_cv);
-  ptcb->refcount=0;
   ptcb->detached=1;
   return 0;
 
