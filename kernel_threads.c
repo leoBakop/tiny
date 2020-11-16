@@ -85,7 +85,7 @@ if(ptcb->detached == 1 ){
 
 if(ptcb->exited ==1){
   if(exitval!=NULL)
-    exitval= & ptcb->exitval;
+    *exitval=ptcb->exitval;
   refcountDec(ptcb);
   return 0;
 }
