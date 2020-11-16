@@ -265,7 +265,6 @@ Pid_t sys_Exec(Task call, int argl, void* args)
 
 if(call != NULL) {
     newproc->main_thread =spawn_thread(newproc,start_main_thread);
-    newproc->thread_count ++;
     newproc->main_thread->owner_ptcb=ptcb;
     ptcb->tcb=newproc->main_thread;
     ptcb->argl = newproc->argl; //new code by me
