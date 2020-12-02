@@ -158,4 +158,15 @@ uint device_no(Device_type major);
 
 /** @} */
 
+#define PIPE_BUFFER_SIZE 5120
+typedef struct pipe_control_block{
+  FCB *reader, *writer;
+  CondVar has_data;
+  CondVar has_space;
+  int w_position, r_position; //w points to the first available position for writing, r points to the first available position for reading
+  int is_empty;
+  char BUFFER[PIPE_BUFFER_SIZE];
+
+}pipe_cb;
+
 #endif
