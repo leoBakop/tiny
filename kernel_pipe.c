@@ -8,6 +8,9 @@ int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 {	
 
 	pipe_cb *pipecb=(pipe_cb*) pipecb_t; //new
+	if(pipecb->reader==NULL)//change
+		return -1; //change
+		
 	int previousState=pipecb->is_empty;
 	int w=pipecb->w_position;
 	int r=pipecb->r_position;
@@ -40,7 +43,10 @@ int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 
 int pipe_read(void* pipecb_t, char *buf, unsigned int n)
 {
+
 	pipe_cb *pipecb=(pipe_cb*) pipecb_t; //new
+	if(pipecb->writer==NULL && pipecb->is_empty==1) //new code by lui
+		return 0;
 	int r=pipecb->r_position;
 	int w=pipecb->w_position;
 	if(pipecb->is_empty==1){
@@ -72,7 +78,7 @@ int pipe_writer_close(void* _pipecb)
 		return-1;
 	pipecb->writer=NULL;
 	kernel_broadcast(& pipecb->has_data);
-	if(pipecb->writer==NULL&&pipecb->reader==NULL){
+	if(pipecb->reader==NULL){
 		free(pipecb);
 	}
 	//kernel_broadcast(& pipecb->has_space);
@@ -88,7 +94,7 @@ int pipe_reader_close(void* _pipecb)
 		return-1;
 	pipecb->reader=NULL;
 	kernel_broadcast(& pipecb->has_space);
-	if(pipecb->writer==NULL&&pipecb->reader==NULL){
+	if(pipecb->writer==NULL){
 		free(pipecb);
 	}
 	/**has space
