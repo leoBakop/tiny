@@ -7,8 +7,7 @@
 int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 {	
 
-	FCB *fcb=pipecb_t;
-	pipe_cb* pipecb= fcb->streamobj;
+	pipe_cb *pipecb=(pipe_cb*) pipecb_t; //new
 	int previousState=pipecb->is_empty;
 	int w=pipecb->w_position;
 	int r=pipecb->r_position;
@@ -41,8 +40,7 @@ int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 
 int pipe_read(void* pipecb_t, char *buf, unsigned int n)
 {
-	FCB* fcb= pipecb_t;
-	pipe_cb* pipecb=fcb->streamobj;
+	pipe_cb *pipecb=(pipe_cb*) pipecb_t; //new
 	int r=pipecb->r_position;
 	int w=pipecb->w_position;
 	if(pipecb->is_empty==1){
