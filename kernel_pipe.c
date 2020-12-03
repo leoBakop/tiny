@@ -7,18 +7,16 @@
 int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 {	
 
-	FCB* fcb=pipecb_t;
+	FCB *fcb=pipecb_t;
 	pipe_cb* pipecb= fcb->streamobj;
 	int previousState=pipecb->is_empty;
-	if(pipecb_t==NULL)
-		return -1;
 	int w=pipecb->w_position;
 	int r=pipecb->r_position;
 	if(w==r && pipecb->is_empty==0){ //full list
 		kernel_wait(& pipecb->has_space, SCHED_PIPE);
 	}
 	for(int i=0; i<n; i++){
-		if((w+i)%PIPE_BUFFER_SIZE==r && pipecb->is_empty==0){
+		if((w+i)%PIPE_BUFFER_SIZE==r && pipecb->is_empty==0){ //if buffer is full
 			w=(w+i)%PIPE_BUFFER_SIZE;
 			pipecb->w_position=w;
 			if(previousState==1 && i>0){
@@ -43,8 +41,28 @@ int pipe_write(void* pipecb_t, const char *buf, unsigned int n)
 
 int pipe_read(void* pipecb_t, char *buf, unsigned int n)
 {
-
-	return 0;
+	FCB* fcb= pipecb_t;
+	pipe_cb* pipecb=fcb->streamobj;
+	int r=pipecb->r_position;
+	int w=pipecb->w_position;
+	if(pipecb->is_empty==1){
+		kernel_wait(& pipecb->has_data, SCHED_PIPE);
+	}
+	for (int i = 0; i < n; i++){
+		if((r+i)%PIPE_BUFFER_SIZE==w && pipecb->is_empty==0){
+			pipecb->is_empty=1;
+			r=r+i%PIPE_BUFFER_SIZE;
+			pipecb->r_position=r;
+			kernel_broadcast(& pipecb->has_space);
+			return i;
+		}
+		buf[i]=pipecb->BUFFER[(r+i)%PIPE_BUFFER_SIZE];
+	}
+	r=r+n%PIPE_BUFFER_SIZE;
+	pipecb->r_position=r;
+	if(n>0)
+		kernel_broadcast(& pipecb->has_space);
+	return n;
 
 }
 
@@ -55,7 +73,8 @@ int pipe_writer_close(void* _pipecb)
 	if(pipecb==NULL)
 		return-1;
 	pipecb->writer=NULL;
-	if(pipecb->reader==NULL){
+	kernel_broadcast(& pipecb->has_data);
+	if(pipecb->writer==NULL&&pipecb->reader==NULL){
 		free(pipecb);
 	}
 	//kernel_broadcast(& pipecb->has_space);
@@ -70,9 +89,14 @@ int pipe_reader_close(void* _pipecb)
 	if(pipecb==NULL)
 		return-1;
 	pipecb->reader=NULL;
-	if(pipecb->writer==NULL){
+	kernel_broadcast(& pipecb->has_space);
+	if(pipecb->writer==NULL&&pipecb->reader==NULL){
 		free(pipecb);
 	}
+	/**has space
+	mnono an oloi einai kleistoi
+	kanw free
+	*/
 	return 0;
 }
 
@@ -98,8 +122,7 @@ int sys_Pipe(pipe_t* pipe)
 {	
 	pipe_cb* pipecb;
 	Fid_t fid[2];
-	FCB* fcb[2];
-	pipe = xmalloc(sizeof(pipe_t));
+	FCB *fcb[2];
 	if(FCB_reserve(2, fid, fcb)==0)
 	{
 		printf("Failed to allocate reader and writer\n");
@@ -110,17 +133,18 @@ int sys_Pipe(pipe_t* pipe)
 	pipecb=xmalloc(sizeof(pipe_cb));
 	pipecb->has_space=COND_INIT;
 	pipecb->has_data=COND_INIT;
-	pipecb->writer=fcb[1];
 	pipecb->reader=fcb[0];
+	pipecb->writer=fcb[1];
 	pipecb->w_position=0; 
 	pipecb->r_position=0;
 	pipecb->is_empty=1;
-	fcb[0]->streamfunc=&reader_file_ops;
-	fcb[1]->streamfunc=&writer_file_ops;
+
 	fcb[0]->streamobj=pipecb;
 	fcb[1]->streamobj=pipecb;
+
+	fcb[0]->streamfunc=&reader_file_ops;
+	fcb[1]->streamfunc=&writer_file_ops;
+
 	return 0;
 }
-
-
 
