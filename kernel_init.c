@@ -9,6 +9,7 @@
 #include "kernel_proc.h"
 #include "kernel_dev.h"
 #include "kernel_streams.h"
+#include "kernel_socket.h"
 
 
 
@@ -38,6 +39,7 @@ void boot_tinyos_kernel()
     initialize_processes();
     initialize_devices();
     initialize_files();
+    init_portmap();
     initialize_scheduler();
 
     /* The boot task is executed normally! */
