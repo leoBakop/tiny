@@ -57,7 +57,8 @@ int pipe_write(void* pipecb_t, const char* buf, unsigned int n){
 			pipecb->w_position=w;
 			kernel_broadcast(&pipecb->has_data);
 			kernel_wait(&pipecb->has_space, SCHED_PIPE);
-			//den kanw return giati allios otan bgei apo thn wait aplvw ua kanei return 
+			//den kanw return giati allios otan bgei apo thn wait aplvw ua kanei return
+			
 		}
 		
 		pipecb->BUFFER[w]=buf[count];
