@@ -9,20 +9,35 @@ static file_ops socket_file_ops = {
   .Close = socket_close
 };
 
-
-
-
+//initialization's function
 
 void init_portmap(){
 	for (int i=0; i<MAX_PORT; i++)
 		PORT_MAP[i]=NULL;
 }
+ listener_socket* init_listener_socket(){
+ 	listener_socket* ls=xmalloc(sizeof(listener_socket));
+ 	rlnode_init(& ls->queue, NULL);
+ 	ls->req_available=COND_INIT;
+ 	return ls;
+ }
+
+ void initializeSocketcb(socket_cb* socketcb, FCB* fcb, port_t port){ //initialize a socket as a UNBOUND socket
+	socketcb->refcount=0;
+	socketcb->fcb=fcb;
+	socketcb->port=port;
+	socketcb->type=SOCKET_UNBOUND;
+	socketcb->unbound_s=xmalloc(sizeof(unbound_socket));
+
+	rlnode_init(&socketcb->unbound_s->unbound_socket, socketcb); //initialize the rlnode as a NODE
+}
+//initialization end
 
 
 
 Fid_t sys_Socket(port_t port)
 {	
-	if (port<0)
+	if (port<0||port>MAX_PORT-1)
 		return -1;
 
 	Fid_t fid;
@@ -46,23 +61,33 @@ Fid_t sys_Socket(port_t port)
 }
 
 
-void initializeSocketcb(socket_cb* socketcb, FCB* fcb, port_t port){ //initialize a socket as a UNBOUND socket
-	socketcb->refcount=0;
-	socketcb->fcb=fcb;
-	socketcb->port=port;
-	socketcb->type=SOCKET_UNBOUND;
-	socketcb->unbound_s=xmalloc(sizeof(unbound_socket));
-
-	rlnode_init(&socketcb->unbound_s->unbound_socket, socketcb); //initialize the rlnode as a NODE
-}
 
 
 
+int sys_Listen(Fid_t sock){
 
+	FCB* fcb=get_fcb(sock);
+	socket_cb* socketcb=fcb->streamobj;
 
-int sys_Listen(Fid_t sock)
-{
-	return -1;
+	if (socketcb->port<0||socketcb->port>MAX_PORT-1) //this check is not needed just to be safe
+		return -1;
+
+	if(socketcb->port==NOPORT)
+		return -1;
+
+	if(PORT_MAP[socketcb->port]!=NULL) //if this socket is already a listener
+		return -1;
+
+	if(socketcb->type!=SOCKET_UNBOUND)
+		return -1;
+
+	//end of ckecks
+	PORT_MAP[socketcb->port]=socketcb; // addint the socketcb to the port map
+	socketcb->type=SOCKET_LISTENER;
+	socketcb->listener_s=init_listener_socket();
+
+	return 0;
+
 }
 
 
