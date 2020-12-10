@@ -177,6 +177,7 @@ Fid_t sys_Accept(Fid_t lsock){
 		return NOFILE;
 	}
 
+
 	socketIncRefCount(scb);
 
 	while(is_rlist_empty(&scb->listener_s->queue)==1&&PORT_MAP[scb->port] != NULL){
@@ -190,6 +191,8 @@ Fid_t sys_Accept(Fid_t lsock){
 
 	if(is_rlist_empty(&scb->listener_s->queue)!=1){
 		request=rlist_pop_front(&scb->listener_s->queue);
+	}else{
+		return NOFILE;
 	}
 
 	connection_request* con =request->req;
@@ -202,6 +205,8 @@ Fid_t sys_Accept(Fid_t lsock){
 
 	//upgrade the socket which made the connection request
 	socket_cb* client=con->peer;
+	if(client->type!=SOCKET_UNBOUND)
+		return NOFILE;
 	client->type=SOCKET_PEER;
 	
 
@@ -376,23 +381,28 @@ int socket_close(void* socketcb){
 			socket->peer_s->peer=NULL;
 			pipe_writer_close(socket->peer_s->write_pipe);
 			pipe_reader_close(socket->peer_s->read_pipe);
-			free(socket->peer_s);
-			socket->type=SOCKET_UNBOUND;
+			//free(socket->peer_s);
+			//socket->type=SOCKET_UNBOUND;
+			socketDecRefCount(socket);
 			break;
+
 		case SOCKET_LISTENER:
-			while(is_rlist_empty(&socket->listener_s->queue)==0){ //ampting listener's queue 
+		/**
+			while(is_rlist_empty(&socket->listener_s->queue)==0){ //empting listener's queue 
 				rlist_pop_front(&socket->listener_s->queue);
-			}
-			free(socket->listener_s);
+			}*/
+
+			kernel_broadcast(& socket->listener_s->req_available);
 			PORT_MAP[socket->port]=NULL;
-			socket->type=SOCKET_UNBOUND;
-			socket->port=0;
+			socketDecRefCount(socket);
+			//socket->type=SOCKET_UNBOUND;
+			//socket->port=0;
 			break;
 		default:
 			return -1;
 	}
 
-		socketDecRefCount(socket);
+		
 
 	return 0;
 }
