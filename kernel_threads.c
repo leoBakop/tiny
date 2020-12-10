@@ -79,7 +79,7 @@ while(ptcb->exited==0 && ptcb->detached==0){
   kernel_wait(& ptcb->exit_cv, SCHED_USER);
 }
 if(ptcb->detached == 1 ){
-  refcountDec(ptcb);
+  ptcb->refcount--;
   return -1;
 }
 
