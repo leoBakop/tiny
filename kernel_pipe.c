@@ -1,6 +1,7 @@
 #include "tinyos.h"
 #include "kernel_dev.h"
 #include "kernel_streams.h"
+#include "kernel_socket.h"
 #include "kernel_sched.h"
 #include "kernel_cc.h"
 
