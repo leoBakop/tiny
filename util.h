@@ -10,6 +10,7 @@
 #include <setjmp.h>
 #include <assert.h>
 
+
 /**
 	@file util.h
 
@@ -289,7 +290,7 @@ typedef struct thread_control_block TCB;	/**< @brief Forward declaration */
 typedef struct core_control_block CCB;		/**< @brief Forward declaration */
 typedef struct device_control_block DCB;	/**< @brief Forward declaration */
 typedef struct file_control_block FCB;		/**< @brief Forward declaration */
-
+typedef struct connection_request_struct connection_request; //was added by a dead man 
 /** @brief A convenience typedef */
 typedef struct resource_list_node * rlnode_ptr;
 
@@ -310,6 +311,7 @@ typedef struct resource_list_node {
      */
   union {
     PTCB* ptcb; //was added by loui
+    connection_request* req; //was added by kourasmenos
     PCB* pcb;
     TCB* tcb;
     CCB* ccb;
