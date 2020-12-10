@@ -23,7 +23,7 @@ listener_socket* init_listener_socket(){
  	rlnode_init(& ls->queue, NULL);
  	ls->req_available=COND_INIT;
  	return ls;
- }
+}
 
  void initializeSocketcb(socket_cb* socketcb, FCB* fcb, port_t port){ //initialize a socket as a UNBOUND socket
 	socketcb->refcount=0;
@@ -51,6 +51,23 @@ void initRequest(connection_request* request, socket_cb* peer){
 
 //initialization end
 
+//assistant functions
+
+socket_cb* get_scb(Fid_t socket){
+	if(socket<0){
+		return NULL;
+	}
+
+	FCB* fcb= get_fcb(socket);
+	if(fcb==NULL){
+		return NULL;
+	}
+	socket_cb* retval=fcb->streamobj;
+	return retval;
+}
+
+
+
 socket_cb* checkIfListener(Fid_t s){
 	if(s<0||s>MAX_PORT-1){
 		return NULL;
@@ -75,13 +92,14 @@ void socketDecRefCount(socket_cb* scb){
 	}
 }
 
+//end of assistant functions
 
 
 
-Fid_t sys_Socket(port_t port)
-{	
+
+Fid_t sys_Socket(port_t port){	
+
 	if (port<0||port>MAX_PORT){
-		fprintf(stderr, "mphka\n" );
 		return NOFILE;
 	}
 
@@ -111,11 +129,9 @@ Fid_t sys_Socket(port_t port)
 
 int sys_Listen(Fid_t sock){
 
-	if(sock<0){
+	if(sock<0 || sock > MAX_PROC){
 		return -1;
 	}
-	//if(sock==NULL)
-	//	return -1;
 
 	FCB* fcb=get_fcb(sock);
 
@@ -125,8 +141,10 @@ int sys_Listen(Fid_t sock){
 
 
 	socket_cb* socketcb=fcb->streamobj;
+
 	if(socketcb==NULL)
 		return -1;
+
 	//fprintf(stderr, "socketcb->port is %d\n",socketcb->port );
 	if (socketcb->port<0||socketcb->port>MAX_PORT-1) //this check is not needed just to be safe
 		return -1;
@@ -137,7 +155,7 @@ int sys_Listen(Fid_t sock){
 	if(PORT_MAP[socketcb->port]!=NULL) //if this socket is already a listener
 		return -1; 
 
-	if(socketcb->type!=SOCKET_UNBOUND)
+	if(socketcb->type!=SOCKET_UNBOUND) //if it is peer or listener
 		return -1;
 
 	//end of ckecks
@@ -244,6 +262,11 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 	socketIncRefCount(listener);
 
 	FCB* fcb= get_fcb(sock);
+
+	if(fcb==NULL){
+		return -1;
+	}
+
 	socket_cb* client=fcb->streamobj;
 
 	connection_request* request=xmalloc(sizeof(connection_request));
@@ -256,6 +279,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 		kernel_timedwait(&request->connected_cv, SCHED_PIPE, timeout); //of timeout because in this situation request->admitted will be 0 so i wont escape from the loop
 	}
 	if(request->admitted==0){ // the timeout expired
+		socketDecRefCount(listener); //new code
 		return -1;
 	}
 
@@ -265,20 +289,111 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 }
 
 
-int sys_ShutDown(Fid_t sock, shutdown_mode how)
-{
-	return -1;
-}
+int sys_ShutDown(Fid_t sock, shutdown_mode how){
+	if(sock<0||sock>MAX_PORT){
+		return -1;
+	}
 
-int socket_write(){
+	FCB* fcb =get_fcb(sock);
+	if (fcb==NULL){
+		return -1;
+	}
+	socket_cb* socket=fcb->streamobj;
+
+	switch(how){
+		case 1:
+			pipe_reader_close(socket->peer_s->read_pipe);
+			socket->peer_s->read_pipe=NULL;
+			break;
+		case 2:
+			pipe_writer_close(socket->peer_s->read_pipe);
+			socket->peer_s->write_pipe=NULL;
+			break;
+		case 3:
+			pipe_reader_close(socket->peer_s->read_pipe);
+			pipe_writer_close(socket->peer_s->read_pipe);
+			socket->peer_s->read_pipe=NULL;
+			socket->peer_s->write_pipe=NULL;
+		break;
+		default:
+			return -1;
+	}
 	return 0;
 }
 
-int socket_read(){
-	return 0;
+int socket_write(void* socketcb, const char* buf, unsigned int n){
+
+	socket_cb* socket=(socket_cb*) socketcb;
+	int retval=0;
+
+	if(socket==NULL){
+		return -1;
+	}
+
+	if(socket->type!=SOCKET_PEER){
+		return -1;
+	}
+
+	pipe_cb* toWrite= socket->peer_s->write_pipe;
+	if(toWrite==NULL){
+		retval=pipe_write(toWrite, buf, n);
+	}
+	return retval;
 }
 
-int socket_close(){
+int socket_read(void* socketcb, char* buf, unsigned int n){
+
+	socket_cb* socket=(socket_cb*) socketcb;
+	int retval=0;
+
+	if(socket==NULL){
+		return -1;
+	}
+
+	if(socket->type!=SOCKET_PEER){
+		return -1;
+	}
+
+	pipe_cb* toRead= socket->peer_s->read_pipe;
+	if(toRead==NULL){
+		retval=pipe_read(toRead, buf, n);
+	}
+	return retval;
+}
+
+int socket_close(void* socketcb){
+	socket_cb* socket=(socket_cb*) socketcb;
+
+	if(socket==NULL){
+		return -1;
+	}
+
+	switch(socket->type){
+
+		case SOCKET_UNBOUND:
+			break;
+		case SOCKET_PEER:
+			socket->peer_s->peer=NULL;
+			pipe_writer_close(socket->peer_s->write_pipe);
+			pipe_reader_close(socket->peer_s->read_pipe);
+			free(socket->peer_s);
+			socket->type=SOCKET_UNBOUND;
+			break;
+		case SOCKET_LISTENER:
+			while(is_rlist_empty(&socket->listener_s->queue)==0){ //ampting listener's queue 
+				rlist_pop_front(&socket->listener_s->queue);
+			}
+			free(socket->listener_s);
+			PORT_MAP[socket->port]=NULL;
+			socket->type=SOCKET_UNBOUND;
+			socket->port=0;
+			break;
+		default:
+			return -1;
+	}
+
+		socketDecRefCount(socket);
+
 	return 0;
 }
 
