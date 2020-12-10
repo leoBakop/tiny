@@ -35,7 +35,7 @@ listener_socket* init_listener_socket(){
 	rlnode_init(&socketcb->unbound_s->unbound_socket, socketcb); //initialize the rlnode as a NODE
 }
 
-peer_socket* init_pipe_socket(socket_cb* peer){
+peer_socket* init_peer_socket(socket_cb* peer){
 	peer_socket* ps= xmalloc(sizeof(peer_socket));
 	ps->peer=peer;
 	return ps;
@@ -69,9 +69,8 @@ socket_cb* get_scb(Fid_t socket){
 
 
 socket_cb* checkIfListener(Fid_t s){
-	fprintf(stderr, "mesa\n" );
+	
 	if(s<0||s>MAX_PORT-1){
-		fprintf(stderr, "o\n");
 		return NULL;
 	}
 
@@ -82,11 +81,11 @@ socket_cb* checkIfListener(Fid_t s){
 	socket_cb* socketcb=fcb->streamobj;
 
 	if(socketcb==NULL){
-		fprintf(stderr, "ouuuuuuuu\n");
+	
 		return NULL;
 	}
 	if(socketcb->type==SOCKET_LISTENER){
-		fprintf(stderr, "sthn check mpainei\n");
+		
 		return socketcb;
 	}
 	return NULL;
@@ -156,7 +155,6 @@ int sys_Listen(Fid_t sock){
 	if(socketcb==NULL)
 		return -1;
 
-	//fprintf(stderr, "socketcb->port is %d\n",socketcb->port );
 	if (socketcb->port<0||socketcb->port>MAX_PORT-1) //this check is not needed just to be safe
 		return -1;
 
@@ -185,7 +183,6 @@ Fid_t sys_Accept(Fid_t lsock){
 	rlnode* request;
 
 	if(scb==NULL){
-		fprintf(stderr, "mphka sthn if\n" );
 		return NOFILE;
 	}
 
@@ -231,10 +228,10 @@ Fid_t sys_Accept(Fid_t lsock){
 	FCB* serverFCB= get_fcb(serverFidt);
 	socket_cb* server= serverFCB->streamobj;
 	server->type=SOCKET_PEER;
-	server->peer_s=init_pipe_socket(client);
+	server->peer_s=init_peer_socket(client);
 
 	//upgrade the socket which made the connection request
-	client->peer_s=init_pipe_socket(server);
+	client->peer_s=init_peer_socket(server);
 
 	//create the two pipecbs that are going to fully connect the two sockets
 	pipe_cb* pipecb1=xmalloc(sizeof(pipe_cb));
@@ -244,6 +241,8 @@ Fid_t sys_Accept(Fid_t lsock){
 
 	initializePipecb(pipecb1);
 	initializePipecb(pipecb2);
+
+
 	//pipecb1 has for writer the server, and for reader the client
 	pipecb1->writer=server->fcb;
 	pipecb1->reader=client->fcb;
@@ -251,6 +250,19 @@ Fid_t sys_Accept(Fid_t lsock){
 	//pipecb2 has for writer the client, and for reader the server
 	pipecb2->writer=client->fcb;
 	pipecb2->reader=server->fcb;
+
+	//client has for reader the pipecb1, and for writer pipecb2
+	client->peer_s->write_pipe=pipecb2;
+	client->peer_s->read_pipe=pipecb1;
+
+
+	//server has for reader pipecb2, and for writer pipecb1
+	server->peer_s->write_pipe=pipecb1;
+	server->peer_s->read_pipe=pipecb2;
+
+
+
+
 
 	kernel_signal(&con->connected_cv);
 
@@ -323,12 +335,12 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how){
 			socket->peer_s->read_pipe=NULL;
 			break;
 		case SHUTDOWN_WRITE:
-			pipe_writer_close(socket->peer_s->read_pipe);
+			pipe_writer_close(socket->peer_s->write_pipe);
 			socket->peer_s->write_pipe=NULL;
 			break;
 		case SHUTDOWN_BOTH:
 			pipe_reader_close(socket->peer_s->read_pipe);
-			pipe_writer_close(socket->peer_s->read_pipe);
+			pipe_writer_close(socket->peer_s->write_pipe);
 			socket->peer_s->read_pipe=NULL;
 			socket->peer_s->write_pipe=NULL;
 		break;
@@ -344,17 +356,19 @@ int socket_write(void* socketcb, const char* buf, unsigned int n){
 	int retval=0;
 
 	if(socket==NULL){
+		fprintf(stderr, "problima 1\n" );
 		return -1;
 	}
 
 	if(socket->type!=SOCKET_PEER){
+		fprintf(stderr, "problima 2\n" );
 		return -1;
 	}
 
-	pipe_cb* toWrite= socket->peer_s->write_pipe;
-	if(toWrite==NULL){
+	pipe_cb* toWrite= socket->peer_s->write_pipe;	
 		retval=pipe_write(toWrite, buf, n);
-	}
+	
+	fprintf(stderr, "retval in write is %d\n", retval);
 	return retval;
 }
 
@@ -372,9 +386,9 @@ int socket_read(void* socketcb, char* buf, unsigned int n){
 	}
 
 	pipe_cb* toRead= socket->peer_s->read_pipe;
-	if(toRead==NULL){
+	
 		retval=pipe_read(toRead, buf, n);
-	}
+	
 	return retval;
 }
 
