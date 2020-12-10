@@ -69,13 +69,24 @@ socket_cb* get_scb(Fid_t socket){
 
 
 socket_cb* checkIfListener(Fid_t s){
+	fprintf(stderr, "mesa\n" );
 	if(s<0||s>MAX_PORT-1){
+		fprintf(stderr, "o\n");
 		return NULL;
 	}
 
 	FCB* fcb=get_fcb(s);
+	if (fcb==NULL){
+		return NULL;
+	}
 	socket_cb* socketcb=fcb->streamobj;
+
+	if(socketcb==NULL){
+		fprintf(stderr, "ouuuuuuuu\n");
+		return NULL;
+	}
 	if(socketcb->type==SOCKET_LISTENER){
+		fprintf(stderr, "sthn check mpainei\n");
 		return socketcb;
 	}
 	return NULL;
@@ -174,6 +185,7 @@ Fid_t sys_Accept(Fid_t lsock){
 	rlnode* request;
 
 	if(scb==NULL){
+		fprintf(stderr, "mphka sthn if\n" );
 		return NOFILE;
 	}
 
@@ -306,15 +318,15 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how){
 	socket_cb* socket=fcb->streamobj;
 
 	switch(how){
-		case 1:
+		case SHUTDOWN_READ:
 			pipe_reader_close(socket->peer_s->read_pipe);
 			socket->peer_s->read_pipe=NULL;
 			break;
-		case 2:
+		case SHUTDOWN_WRITE:
 			pipe_writer_close(socket->peer_s->read_pipe);
 			socket->peer_s->write_pipe=NULL;
 			break;
-		case 3:
+		case SHUTDOWN_BOTH:
 			pipe_reader_close(socket->peer_s->read_pipe);
 			pipe_writer_close(socket->peer_s->read_pipe);
 			socket->peer_s->read_pipe=NULL;
