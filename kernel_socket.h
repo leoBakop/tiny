@@ -80,5 +80,11 @@ int socket_write();
 int socket_close();
 void init_portmap();
 
+//implmented in kernel_pipe.c
+void initializePipecb(pipe_cb* pipecb);
+int pipe_writer_close(void* pipecbt);
+int pipe_reader_close(void* pipecbt);
+int pipe_read(void* pipecb_t, char* buf, unsigned int n);
+int pipe_write(void* pipecb_t, const char* buf, unsigned int n);
 
 
