@@ -183,7 +183,6 @@ Fid_t sys_Accept(Fid_t lsock){
 	rlnode* request;
 
 	if(scb==NULL){
-		fprintf(stderr, "1\n" );
 		return NOFILE;
 	}
 
@@ -196,21 +195,18 @@ Fid_t sys_Accept(Fid_t lsock){
 
 
 	if (PORT_MAP[scb->port] == NULL){
-		fprintf(stderr, "2\n" );
 		return NOFILE;
 	}
 
 	if(is_rlist_empty(&scb->listener_s->queue)!=1){
 		request=rlist_pop_front(&scb->listener_s->queue);
 	}else{
-		fprintf(stderr, "3\n" );
 		return NOFILE;
 	}
 
 	connection_request* con =request->req;
 
 	if(con->peer==NULL){
-		fprintf(stderr, "4\n" );
 		return -1;
 	}
 
@@ -220,19 +216,23 @@ Fid_t sys_Accept(Fid_t lsock){
 	//creation of the new socket(listener's peer)
 	Fid_t serverFidt= sys_Socket(0);
 	if (serverFidt==NOFILE){
-		fprintf(stderr, "6\n" );
 		return -1;
 	}
-	
+
 	con->admitted=1; //fuck of this fucking line must be under the previous if
 
 
 	//upgrade the socket which made the connection request
 	socket_cb* client=con->peer;
+
 	if(client->type!=SOCKET_UNBOUND){
-		fprintf(stderr, "5\n" );
 		return NOFILE;
 	}
+
+	
+
+
+
 	client->type=SOCKET_PEER;
 
 	FCB* serverFCB= get_fcb(serverFidt);
@@ -271,7 +271,6 @@ Fid_t sys_Accept(Fid_t lsock){
 	server->peer_s->read_pipe=pipecb2;
 
 	kernel_signal(&con->connected_cv);
-	//scb->refcount--;
 	socketDecRefCount(scb);
 
 	return serverFidt;
@@ -296,13 +295,10 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 	socket_cb* listener=PORT_MAP[port];
 	socketIncRefCount(listener);
 
-	FCB* fcb= get_fcb(sock);
-
-	if(fcb==NULL){
+	socket_cb* client=get_scb(sock);
+	if(client==NULL||client->type!=SOCKET_UNBOUND)
 		return -1;
-	}
 
-	socket_cb* client=fcb->streamobj;
 
 	connection_request* request=xmalloc(sizeof(connection_request));
 	initRequest(request, client);
@@ -310,13 +306,11 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 	rlist_push_front(&listener->listener_s->queue, &request->queue_node);
 	kernel_broadcast(&listener->listener_s->req_available);
 
-	if(request->admitted==0){
-	 	fprintf(stderr, "la la la\n" );									    //if i write while(request->admitted==0){} i will create a infinite loop in case 
+	if(request->admitted==0){			 //if i write while(request->admitted==0){} i will create a infinite loop in case 
 		kernel_timedwait(&request->connected_cv, SCHED_PIPE, timeout); //of timeout because in this situation request->admitted will be 0 so i wont escape from the loop
 	}
 	if(request->admitted==0){ // the timeout expired
 		socketDecRefCount(listener); //new code
-		fprintf(stderr, "mphka sth if\n" );
 		return -1;
 	}
 
@@ -334,13 +328,7 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how){
 	socket_cb* socket=get_scb(sock);
 	if (socket==NULL)
 		return-1;
-	
-	/**if(CURPROC->FIDT[sock] == NULL || CURPROC->FIDT[sock]->streamobj == NULL){
-	return -1;
-	}
-
-	socket_cb* scb =(socket_cb*)CURPROC->FIDT[sock]->streamobj;
-*/	 
+ 
 	if (socket->type != SOCKET_PEER)
 		return -1;
 
@@ -359,6 +347,7 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how){
 		default:
 			break;
 		}
+
 	return 0;
 	}
 
@@ -437,16 +426,8 @@ int socket_close(void* socketcb){
 			return -1;
 	}
 
-	//if(socket!=NULL&& socket->refcount<=0){
-	//	free(socket);
-	//}	
 
 	return 0;
 	
 }
-
-
-
-
-
 
