@@ -26,7 +26,7 @@ listener_socket* init_listener_socket(){
 }
 
  void initializeSocketcb(socket_cb* socketcb, FCB* fcb, port_t port){ //initialize a socket as a UNBOUND socket
-	socketcb->refcount=0;
+	socketcb->refcount=1;
 	socketcb->fcb=fcb;
 	socketcb->port=port;
 	socketcb->type=SOCKET_UNBOUND;
@@ -183,6 +183,7 @@ Fid_t sys_Accept(Fid_t lsock){
 	rlnode* request;
 
 	if(scb==NULL){
+		fprintf(stderr, "1\n" );
 		return NOFILE;
 	}
 
@@ -195,18 +196,21 @@ Fid_t sys_Accept(Fid_t lsock){
 
 
 	if (PORT_MAP[scb->port] == NULL){
+		fprintf(stderr, "2\n" );
 		return NOFILE;
 	}
 
 	if(is_rlist_empty(&scb->listener_s->queue)!=1){
 		request=rlist_pop_front(&scb->listener_s->queue);
 	}else{
+		fprintf(stderr, "3\n" );
 		return NOFILE;
 	}
 
 	connection_request* con =request->req;
 
 	if(con->peer==NULL){
+		fprintf(stderr, "4\n" );
 		return -1;
 	}
 
@@ -214,16 +218,20 @@ Fid_t sys_Accept(Fid_t lsock){
 
 	//upgrade the socket which made the connection request
 	socket_cb* client=con->peer;
-	if(client->type!=SOCKET_UNBOUND)
+	if(client->type!=SOCKET_UNBOUND){
+		fprintf(stderr, "5\n" );
 		return NOFILE;
+	}
 	client->type=SOCKET_PEER;
 	
 
 
 	//creation of the new socket(listener's peer)
 	Fid_t serverFidt= sys_Socket(0);
-	if (serverFidt==-1)
+	if (serverFidt==-1){
+		fprintf(stderr, "6\n" );
 		return -1;
+	}
 
 	FCB* serverFCB= get_fcb(serverFidt);
 	socket_cb* server= serverFCB->streamobj;
@@ -260,12 +268,8 @@ Fid_t sys_Accept(Fid_t lsock){
 	server->peer_s->write_pipe=pipecb1;
 	server->peer_s->read_pipe=pipecb2;
 
-
-
-
-
 	kernel_signal(&con->connected_cv);
-
+	//scb->refcount--;
 	socketDecRefCount(scb);
 
 	return serverFidt;
@@ -318,37 +322,42 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 }
 
 
-int sys_ShutDown(Fid_t sock, shutdown_mode how){
-	if(sock<0||sock>MAX_PORT){
-		return -1;
+int sys_ShutDown(Fid_t sock, shutdown_mode how)
+	{
+	if(sock<0 || sock>=MAX_FILEID)
+	return -1;
+
+	//if fid invalid.
+	socket_cb* socket=get_scb(sock);
+	if (socket==NULL)
+		return-1;
+	
+	/**if(CURPROC->FIDT[sock] == NULL || CURPROC->FIDT[sock]->streamobj == NULL){
+	return -1;
 	}
 
-	FCB* fcb =get_fcb(sock);
-	if (fcb==NULL){
+	socket_cb* scb =(socket_cb*)CURPROC->FIDT[sock]->streamobj;
+*/	 
+	if (socket->type != SOCKET_PEER)
 		return -1;
-	}
-	socket_cb* socket=fcb->streamobj;
 
+	 
 	switch(how){
 		case SHUTDOWN_READ:
 			pipe_reader_close(socket->peer_s->read_pipe);
-			socket->peer_s->read_pipe=NULL;
-			break;
+			break; 
 		case SHUTDOWN_WRITE:
 			pipe_writer_close(socket->peer_s->write_pipe);
-			socket->peer_s->write_pipe=NULL;
 			break;
 		case SHUTDOWN_BOTH:
-			pipe_reader_close(socket->peer_s->read_pipe);
 			pipe_writer_close(socket->peer_s->write_pipe);
-			socket->peer_s->read_pipe=NULL;
-			socket->peer_s->write_pipe=NULL;
-		break;
+			pipe_reader_close(socket->peer_s->read_pipe);
+			break;
 		default:
-			return -1;
-	}
+			break;
+		}
 	return 0;
-}
+	}
 
 int socket_write(void* socketcb, const char* buf, unsigned int n){
 
@@ -356,19 +365,16 @@ int socket_write(void* socketcb, const char* buf, unsigned int n){
 	int retval=0;
 
 	if(socket==NULL){
-		fprintf(stderr, "problima 1\n" );
 		return -1;
 	}
 
 	if(socket->type!=SOCKET_PEER){
-		fprintf(stderr, "problima 2\n" );
 		return -1;
 	}
 
 	pipe_cb* toWrite= socket->peer_s->write_pipe;	
 		retval=pipe_write(toWrite, buf, n);
 	
-	fprintf(stderr, "retval in write is %d\n", retval);
 	return retval;
 }
 
@@ -394,6 +400,7 @@ int socket_read(void* socketcb, char* buf, unsigned int n){
 
 int socket_close(void* socketcb){
 	socket_cb* socket=(socket_cb*) socketcb;
+	peer_socket* peer;
 
 	if(socket==NULL){
 		return -1;
@@ -404,35 +411,35 @@ int socket_close(void* socketcb){
 		case SOCKET_UNBOUND:
 			break;
 		case SOCKET_PEER:
-			socket->peer_s->peer=NULL;
-			pipe_writer_close(socket->peer_s->write_pipe);
-			pipe_reader_close(socket->peer_s->read_pipe);
-			//free(socket->peer_s);
-			//socket->type=SOCKET_UNBOUND;
-			socketDecRefCount(socket);
+			peer=socket->peer_s;
+			if(peer->write_pipe!=NULL){
+				pipe_writer_close(peer->write_pipe);
+			}
+			if(peer->read_pipe!=NULL){
+				pipe_reader_close(peer->read_pipe);
+			}
+			//socketcb->peer_s->NULL;
 			break;
 
 		case SOCKET_LISTENER:
-		/**
-			while(is_rlist_empty(&socket->listener_s->queue)==0){ //empting listener's queue 
-				rlist_pop_front(&socket->listener_s->queue);
-			}*/
-
-			kernel_broadcast(& socket->listener_s->req_available);
 			PORT_MAP[socket->port]=NULL;
-			socketDecRefCount(socket);
-			//socket->type=SOCKET_UNBOUND;
-			//socket->port=0;
+			if(socket->refcount!=0){
+				kernel_broadcast(& socket->listener_s->req_available);
+				while(is_rlist_empty(& socket->listener_s->queue)==0){
+					rlist_pop_front(&socket->listener_s->queue);
+				}
+			}
 			break;
 		default:
 			return -1;
 	}
 
-		
+	//if(socket!=NULL&& socket->refcount<=0){
+	//	free(socket);
+	//}	
 
 	return 0;
+	
 }
-
-
 
 
