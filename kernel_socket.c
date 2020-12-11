@@ -214,7 +214,18 @@ Fid_t sys_Accept(Fid_t lsock){
 		return -1;
 	}
 
-	con->admitted=1;
+	
+
+
+	//creation of the new socket(listener's peer)
+	Fid_t serverFidt= sys_Socket(0);
+	if (serverFidt==NOFILE){
+		fprintf(stderr, "6\n" );
+		return -1;
+	}
+	
+	con->admitted=1; //fuck of this fucking line must be under the previous if
+
 
 	//upgrade the socket which made the connection request
 	socket_cb* client=con->peer;
@@ -223,15 +234,6 @@ Fid_t sys_Accept(Fid_t lsock){
 		return NOFILE;
 	}
 	client->type=SOCKET_PEER;
-	
-
-
-	//creation of the new socket(listener's peer)
-	Fid_t serverFidt= sys_Socket(0);
-	if (serverFidt==-1){
-		fprintf(stderr, "6\n" );
-		return -1;
-	}
 
 	FCB* serverFCB= get_fcb(serverFidt);
 	socket_cb* server= serverFCB->streamobj;
@@ -308,11 +310,13 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 	rlist_push_front(&listener->listener_s->queue, &request->queue_node);
 	kernel_broadcast(&listener->listener_s->req_available);
 
-	if(request->admitted==0){ 										    //if i write while(request->admitted==0){} i will create a infinite loop in case 
+	if(request->admitted==0){
+	 	fprintf(stderr, "la la la\n" );									    //if i write while(request->admitted==0){} i will create a infinite loop in case 
 		kernel_timedwait(&request->connected_cv, SCHED_PIPE, timeout); //of timeout because in this situation request->admitted will be 0 so i wont escape from the loop
 	}
 	if(request->admitted==0){ // the timeout expired
 		socketDecRefCount(listener); //new code
+		fprintf(stderr, "mphka sth if\n" );
 		return -1;
 	}
 
@@ -322,8 +326,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout){
 }
 
 
-int sys_ShutDown(Fid_t sock, shutdown_mode how)
-	{
+int sys_ShutDown(Fid_t sock, shutdown_mode how){
 	if(sock<0 || sock>=MAX_FILEID)
 	return -1;
 
@@ -441,5 +444,9 @@ int socket_close(void* socketcb){
 	return 0;
 	
 }
+
+
+
+
 
 
