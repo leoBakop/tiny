@@ -1,8 +1,8 @@
 #include "tinyos.h"
 #include "kernel_dev.h"
 #include "kernel_streams.h"
-#include "kernel_socket.h"
 #include "kernel_sched.h"
+#include "kernel_socket.h"
 #include "kernel_cc.h"
 
 void initializePipecb(pipe_cb* pipecb){
@@ -30,22 +30,26 @@ int goRight(int pointer){
 }
 
 int pipe_write(void* pipecb_t, const char* buf, unsigned int n){
-	if (pipecb_t==NULL||buf==NULL)
+	if (pipecb_t==NULL||buf==NULL){
 		return -1;
+	}
 	pipe_cb* pipecb=pipecb_t;
 	int w=pipecb->w_position;
 	
 	int count=0;
-	if(pipecb->writer==NULL) //if writer is closed, obviously you cannot write
+	if(pipecb->writer==NULL){//if writer is closed, obviously you cannot write
 		return -1;
-	if(pipecb->reader==NULL) //if reader is closed, none will read the thingw writer will write
+	} 
+	if(pipecb->reader==NULL){ //if reader is closed, none will read the thingw writer will write
 		return -1;
+	}
 	while(isFull(pipecb)==1  && pipecb->reader!=NULL){
 		//kernel_broadcast(&pipecb->has_data);
 		kernel_wait(&pipecb->has_space, SCHED_PIPE);
 	}
-	if(pipecb->reader==NULL)
+	if(pipecb->reader==NULL){
 		return -1;
+	}
 
 	while(count<n){
 
