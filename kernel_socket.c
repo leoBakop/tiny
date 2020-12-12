@@ -363,7 +363,6 @@ int socket_write(void* socketcb, const char* buf, unsigned int n){
 	if(socket->type!=SOCKET_PEER){
 		return -1;
 	}
-
 	pipe_cb* toWrite= socket->peer_s->write_pipe;	
 		retval=pipe_write(toWrite, buf, n);
 	
@@ -383,9 +382,9 @@ int socket_read(void* socketcb, char* buf, unsigned int n){
 		return -1;
 	}
 
+
 	pipe_cb* toRead= socket->peer_s->read_pipe;
-	
-		retval=pipe_read(toRead, buf, n);
+	retval=pipe_read(toRead, buf, n);
 	
 	return retval;
 }
