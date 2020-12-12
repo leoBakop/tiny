@@ -388,57 +388,114 @@ void sys_Exit(int exitval)
 
   sys_ThreadExit(exitval);
 
-// /* Do all the other cleanup we want here, close files etc. */
-//  if(curproc->args) {
-//    free(curproc->args);
-//    curproc->args = NULL;
-//  }
-//
-//  /* Clean up FIDT */
-//  for(int i=0;i<MAX_FILEID;i++) {
-//    if(curproc->FIDT[i] != NULL) {
-//      FCB_decref(curproc->FIDT[i]);
-//      curproc->FIDT[i] = NULL;
-//    }
-//  }
-//
-//  /* Reparent any children of the exiting process to the 
-//     initial task */
-//  PCB* initpcb = get_pcb(1);
-//  while(!is_rlist_empty(& curproc->children_list)) {
-//    rlnode* child = rlist_pop_front(& curproc->children_list);
-//    child->pcb->parent = initpcb;
-//    rlist_push_front(& initpcb->children_list, child);
-//  }
-//
-//  /* Add exited children to the initial task's exited list 
-//     and signal the initial task */
-//  if(!is_rlist_empty(& curproc->exited_list)) {
-//    rlist_append(& initpcb->exited_list, &curproc->exited_list);
-//    kernel_broadcast(& initpcb->child_exit);
-//  }
-//
-//  /* Put me into my parent's exited list */
-//  if(curproc->parent != NULL) {   /* Maybe this is init */
-//    rlist_push_front(& curproc->parent->exited_list, &curproc->exited_node);
-//    kernel_broadcast(& curproc->parent->child_exit);
-//  }
-//
-//  /* Disconnect my main_thread */
-//  curproc->main_thread = NULL;
-//
-//  /* Now, mark the process as exited. */
-//  curproc->pstate = ZOMBIE;
-//  curproc->exitval = exitval;
-//
-//  /* Bye-bye cruel world */
-//  kernel_sleep(EXITED, SCHED_USER); */
 }
 
-Fid_t sys_OpenInfo()
-{
-	return NOFILE;
+
+
+
+
+
+
+
+int procinfo_read(void* procinfocb, char* buf, unsigned int size){
+  procinfo_cb* prcb;
+  prcb=(procinfo_cb*) procinfocb;
+  int i=prcb->cursor;
+  fprintf(stderr, "%d\n",i );
+  PCB* pcb=& PT[i];
+  if(pcb->pstate==FREE)
+   return NOFILE;
+
+  prcb->procInfomv->pid=get_pid(pcb);
+  prcb->procInfomv->ppid=get_pid(pcb->parent);
+
+  switch(pcb->pstate){
+    case ZOMBIE:
+      prcb->procInfomv->alive=0;
+      break;
+    case ALIVE:
+      prcb->procInfomv->alive=1;
+      break;
+    default:
+    FATAL("error");
+    break;
+  }
+
+  prcb->procInfomv->thread_count=pcb->thread_count;
+  prcb->procInfomv->main_task=pcb->main_task;
+  prcb->procInfomv->argl=pcb->argl;
+  memcpy(&prcb->procInfomv->args,(char*)&pcb->args, sizeof(pcb->args));
+
+
+  memcpy(buf, (char*) prcb->procInfomv, sizeof(*(prcb->procInfomv)));
+
+  prcb->cursor++;
+  while(PT[prcb->cursor].pstate==FREE&&prcb->cursor<MAX_PROC){
+    prcb->cursor++;
+  }
+
+  if(prcb->cursor>=MAX_PROC-1)
+    return NOFILE;
+
+
+  int b=sizeof(prcb->procInfomv);
+  fprintf(stderr, " size of %d\n",b );
+  fprintf(stderr, "cursor after is %d\n", prcb->cursor);
+  return sizeof(prcb->procInfomv);
+
 }
+
+
+
+
+
+
+int procinfo_close(void* procinfocb){
+  procinfo_cb* prcb;
+  prcb=(procinfo_cb*) procinfocb;
+  //free(&prcb->procInfomv);
+  free(prcb);
+  return 0;
+}
+
+static file_ops procinfo_file_ops = {
+  .Open = NULL,
+  .Read = procinfo_read,
+  .Write = NULL,
+  .Close = procinfo_close
+};
+
+
+Fid_t sys_OpenInfo(){
+  Fid_t fid;
+  FCB* fcb;
+   if(FCB_reserve(1, &fid, &fcb)==0 ){
+    printf("Failed to allocate console Fids\n");
+    return NOFILE;
+  }
+  
+ 
+
+  procinfo_cb* prcb=xmalloc(sizeof(procinfo_cb));
+  prcb->procInfomv=xmalloc(sizeof(procinfo));
+
+
+  prcb->cursor=0;
+
+
+  fcb->streamobj=prcb;
+  fcb->streamfunc= &procinfo_file_ops;
+
+
+  return fid;
+  
+  
+}
+
+
+
+
+
 
 
 
