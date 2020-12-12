@@ -89,6 +89,19 @@ typedef struct process_thread_control_block{
 
 //end of our section 
 
+
+//pt 2
+
+typedef struct procinfo_control_block{
+  procinfo* procInfomv;
+  int cursor;
+}procinfo_cb;
+
+
+//
+
+
+
 /**
   @brief Initialize the process table.
 
@@ -127,5 +140,10 @@ PTCB* initialize_PTCB();  //was added by lui
 void refcountIncr(PTCB* ptcb);                   //was added by lui
 void refcountDec(PTCB* ptcb);                    //was added by lui
 void start_another_thread();
+
+
+
+int procinfo_read(void* procinfocb, char* buf, unsigned int size);
+int procinfo_close(void* procinfocb);
 
 #endif
