@@ -79,37 +79,49 @@ int pipe_write(void* pipecb_t, const char* buf, unsigned int n){
 
 
 int pipe_read(void* pipecb_t, char* buf, unsigned int n){
-	if (pipecb_t==NULL||buf==NULL)
+	
+	if (pipecb_t==NULL||buf==NULL){
+		//fprintf(stderr, "1\n");
 		return -1;
+	}
 	pipe_cb* pipecb=pipecb_t;
 	int r=pipecb->r_position;
-	
+	//fprintf(stderr, "written bytes are %d\n",pipecb->written_bytes);
 	int count=0;
 
-	if (pipecb->reader==NULL) //if reader is closed, obviously you cannot read
+	if (pipecb->reader==NULL){ //if reader is closed, obviously you cannot read
+		//fprintf(stderr, "2\n");
 		return -1;
-	if (isEmpty(pipecb)==1 && pipecb->writer==NULL)
+	}
+	if(isEmpty(pipecb)==1){
+		//pipecb->written_bytes=0;
+	}
+
+
+	if (isEmpty(pipecb)==1 && pipecb->writer==NULL){
 		return 0;
+	}
 	
 	while(isEmpty(pipecb)==1 && pipecb->writer!=NULL ){
 		//kernel_broadcast(&pipecb->has_space);
 		kernel_wait(&pipecb->has_data, SCHED_PIPE);
 		
 	}
-	if(pipecb->writer==NULL)
-		return -1;
-
+	
 
 	while(count<n){
+
 		if(isEmpty(pipecb)==1&&pipecb->writer==NULL){
+			//pipecb->written_bytes=0;
 			pipecb->r_position=r;
 			return count;
 		}
+
 		while(isEmpty(pipecb)==1){
+			//pipecb->written_bytes=0;
 			pipecb->r_position=r;
 			kernel_broadcast(&pipecb->has_space);
 			kernel_wait(&pipecb->has_data, SCHED_PIPE);
-
 		}
 		
 
@@ -118,9 +130,11 @@ int pipe_read(void* pipecb_t, char* buf, unsigned int n){
 		count++;
 		pipecb->written_bytes--;
 	}
-
+	
 	pipecb->r_position=r;
 	kernel_broadcast(&pipecb->has_space);
+	
+
 	return count;
 }
 
@@ -128,27 +142,29 @@ int pipe_writer_close(void* pipecbt){
 	if (pipecbt==NULL)
 		return -1;
 	pipe_cb* pipecb=pipecbt;
+	if(pipecb==NULL)
+		return -1;
 	pipecb->writer=NULL;
 	kernel_broadcast(&pipecb->has_data);
-	if(pipecb->reader==NULL){
-		free(pipecb);
-	}
+	//if(pipecb->reader==NULL)
+		//free(pipecb);
+	
 
 	return 0;
 }
 
 int pipe_reader_close(void* pipecbt){
-	if (pipecbt==NULL)
+	if (pipecbt==NULL){
 		return -1;
-	pipe_cb* pipecb=pipecbt;
-	pipecb->reader=NULL;
-	
-	if(pipecb->writer==NULL){
-		free(pipecb);
-	}else{
-		kernel_broadcast(&pipecb->has_space);
 	}
+	pipe_cb* pipecb=pipecbt;
+	if(pipecb==NULL)
+		return -1;
+	pipecb->reader=NULL;
+	kernel_broadcast(&pipecb->has_space);
 
+	//if(pipecb->writer==NULL)
+		//free(pipecb);
 	return 0;
 
 }
