@@ -391,17 +391,16 @@ void sys_Exit(int exitval)
 }
 
 
+/** methods for sysinfo*/
 
 
 
 
-
-
+/**in this method, we memcpy and then we move the cursor */
 int procinfo_read(void* procinfocb, char* buf, unsigned int size){
   procinfo_cb* prcb;
   prcb=(procinfo_cb*) procinfocb;
   int i=prcb->cursor;
-  fprintf(stderr, "%d\n",i );
   PCB* pcb=& PT[i];
   if(pcb->pstate==FREE)
    return NOFILE;
@@ -437,10 +436,6 @@ int procinfo_read(void* procinfocb, char* buf, unsigned int size){
   if(prcb->cursor>=MAX_PROC-1)
     return NOFILE;
 
-
-  int b=sizeof(prcb->procInfomv);
-  fprintf(stderr, " size of %d\n",b );
-  fprintf(stderr, "cursor after is %d\n", prcb->cursor);
   return sizeof(prcb->procInfomv);
 
 }
@@ -449,12 +444,11 @@ int procinfo_read(void* procinfocb, char* buf, unsigned int size){
 
 
 
-
+/** */
 int procinfo_close(void* procinfocb){
   procinfo_cb* prcb;
   prcb=(procinfo_cb*) procinfocb;
-  //free(&prcb->procInfomv);
-  free(prcb);
+  free(prcb);//free the procinfo
   return 0;
 }
 
@@ -466,6 +460,7 @@ static file_ops procinfo_file_ops = {
 };
 
 
+/**syscall that creates the proces who counts the processes */
 Fid_t sys_OpenInfo(){
   Fid_t fid;
   FCB* fcb;
@@ -480,7 +475,7 @@ Fid_t sys_OpenInfo(){
   prcb->procInfomv=xmalloc(sizeof(procinfo));
 
 
-  prcb->cursor=0;
+  prcb->cursor=0;//init is int the first position so we are sure that this is the next alive pcb
 
 
   fcb->streamobj=prcb;
